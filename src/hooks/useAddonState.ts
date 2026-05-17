@@ -58,21 +58,28 @@ export function useAddonState() {
   const toggle = useCallback(
     async (manifest: AddonManifest) => {
       const id = manifest.id;
-      if (enabled.has(id)) {
-        await closeAddonOverlay(id);
-        const next = new Set(enabled);
-        next.delete(id);
-        await persistEnabled(next);
-      } else {
-        await spawnAddonOverlay(manifest);
-        const next = new Set(enabled);
-        next.add(id);
-        await persistEnabled(next);
-        setLocked((m) => {
-          const nm = new Map(m);
-          nm.set(id, false);
-          return nm;
-        });
+      try {
+        if (enabled.has(id)) {
+          await closeAddonOverlay(id);
+          const next = new Set(enabled);
+          next.delete(id);
+          await persistEnabled(next);
+        } else {
+          await spawnAddonOverlay(manifest);
+          const next = new Set(enabled);
+          next.add(id);
+          await persistEnabled(next);
+          // The spawn applies whatever lock state the store has for this
+          // addon; mirror it here so the per-row button label matches.
+          const storeLocked = await getOverlayLocked(id);
+          setLocked((m) => {
+            const nm = new Map(m);
+            nm.set(id, storeLocked);
+            return nm;
+          });
+        }
+      } catch (e) {
+        console.error(`[addon] toggle ${id} failed:`, e);
       }
     },
     [enabled, persistEnabled],
