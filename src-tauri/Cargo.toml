@@ -11,6 +11,15 @@ name = "raglens_lib"
 # triple our compile time on CI.
 crate-type = ["rlib"]
 
+[[bin]]
+name = "raglens"
+path = "src/main.rs"
+# Skip test-binary build for the bin target. main.rs has no tests, and
+# the test binary would still inherit build.rs's admin manifest, which
+# makes `cargo test` require elevation on Windows. Library tests still
+# run normally.
+test = false
+
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 
@@ -26,6 +35,9 @@ hex = "0.4"
 windows = { version = "0.58", features = [
   "Win32_Networking_WinSock",
   "Win32_NetworkManagement_IpHelper",
+  # Required for GetAdaptersAddresses / IP_ADAPTER_ADDRESSES_LH —
+  # they're gated behind this Ndis feature in windows 0.58.
+  "Win32_NetworkManagement_Ndis",
 ] }
 
 [profile.release]
