@@ -1,0 +1,63 @@
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #14141a;
+  color: #e6e6ec;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid #2a2a36;
+  background: #1a1a22;
+}
+
+.app-header h1 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.status-pill {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #2a2a36;
+  color: #b8b8c4;
+}
+
+.status-pill.status-idle {
+  background: #2a2a36;
+}
+
+.status-pill.status-recording {
+  background: #2d4a2d;
+  color: #b8e0b8;
+}
+
+.app-main {
+  flex: 1;
+  padding: 20px;
+}
+
+.app-placeholder {
+  opacity: 0.7;
+}

@@ -1,0 +1,36 @@
+[package]
+name = "raglens"
+version = "0.1.0"
+description = "WoW-addon-style overlay framework for Ragnarok Online"
+authors = ["adson"]
+edition = "2021"
+
+[lib]
+name = "raglens_lib"
+# Desktop-only build. The mobile-style crate-types are unnecessary and
+# triple our compile time on CI.
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-store = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+hex = "0.4"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.58", features = [
+  "Win32_Networking_WinSock",
+  "Win32_NetworkManagement_IpHelper",
+] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

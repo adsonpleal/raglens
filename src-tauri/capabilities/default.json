@@ -1,0 +1,24 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for Raglens windows",
+  "windows": ["main", "overlay-*"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:default",
+    "core:webview:default",
+    "core:webview:allow-create-webview-window",
+    "core:app:default",
+    "opener:default",
+    "store:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        { "url": "https://github.com/**" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+# Logs
+*.log
+
+# Dependencies & build output
+node_modules
+dist
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+
+# Tauri build output
+src-tauri/target
+src-tauri/gen
+
+# TypeScript build cache (project references)
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# Local env
+.env.local
+*.local
