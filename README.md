@@ -60,8 +60,9 @@ Não. O Raglens não toca em nada do cliente do jogo, não injeta DLL
 nenhuma, não modifica memória, não envia pacotes pro servidor. Ele
 apenas observa, do lado de fora, o tráfego de rede que **o próprio
 servidor já te mandou** — os mesmos pacotes que o seu cliente recebe e
-processa. A leitura acontece no nível do driver de rede (via WinDivert),
-antes do cliente sequer interpretar.
+processa. A leitura acontece no nível do driver de rede (via
+[WinDivert](https://github.com/basil00/WinDivert)), antes do cliente
+sequer interpretar.
 
 Cada addon converte esses bytes em informação útil (XP/min, ETA, etc.) e
 desenha numa janela em cima do cliente. A janela é só uma camada por
@@ -223,8 +224,9 @@ Causas possíveis, em ordem de probabilidade:
 - Windows 11 SDK via Visual Studio Installer
 - Node.js 20+
 - Visual Studio C++ Build Tools (com `vcvars64.bat`)
-- WinDivert 2.x — os binários (`WinDivert.dll`, `WinDivert64.sys`,
-  `WinDivert.lib`) já vêm em `src-tauri/resources/x64/`
+- [WinDivert](https://github.com/basil00/WinDivert) 2.x — os binários
+  (`WinDivert.dll`, `WinDivert64.sys`, `WinDivert.lib`) já vêm em
+  `src-tauri/resources/x64/`
 
 ## Setup
 
