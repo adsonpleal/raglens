@@ -63,6 +63,11 @@ export async function spawnAddonOverlay(
     alwaysOnTop: true,
     decorations: false,
     transparent: true,
+    // Without shadow:false, DWM draws a drop-shadow around the window
+    // frame, and on transparent borderless windows that shadow ends up
+    // filling the entire window rect with a dark halo. Tauri's own
+    // docs flag this as a known interaction (tao#72).
+    shadow: false,
     skipTaskbar: true,
     resizable: true,
     visible: false, // OverlayHost shows itself once foreground state is known

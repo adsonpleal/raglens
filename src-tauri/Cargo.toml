@@ -48,6 +48,14 @@ windows = { version = "0.58", features = [
   # GetProcAddress / LoadLibraryW for the undocumented
   # SetWindowCompositionAttribute used in transparency.rs.
   "Win32_System_LibraryLoader",
+  # DwmExtendFrameIntoClientArea — the documented DWM call we pair
+  # with the transparent accent policy. Extending the frame margins
+  # by -1 tells DWM the entire client area is part of the composed
+  # window, which is what makes per-pixel alpha actually paint
+  # through on Windows. The MARGINS struct lives behind
+  # `Win32_UI_Controls`.
+  "Win32_Graphics_Dwm",
+  "Win32_UI_Controls",
 ] }
 
 [profile.release]

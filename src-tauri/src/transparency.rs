@@ -98,6 +98,31 @@ fn apply(app: &AppHandle, label: &str) -> Result<(), String> {
         size_of_data: core::mem::size_of::<AccentPolicy>(),
     };
 
+    // Step 1: documented DWM call. Margins (-1,-1,-1,-1) tells DWM to
+    // treat the entire client area as part of the composed window —
+    // this is what gets per-pixel alpha to actually paint through.
+    // Without this, the accent policy alone tends to be ignored on
+    // borderless windows.
+    use windows::Win32::Foundation::HWND;
+    use windows::Win32::Graphics::Dwm::DwmExtendFrameIntoClientArea;
+    use windows::Win32::UI::Controls::MARGINS;
+    let dwm_hwnd = HWND(raw_hwnd);
+    let margins = MARGINS {
+        cxLeftWidth: -1,
+        cxRightWidth: -1,
+        cyTopHeight: -1,
+        cyBottomHeight: -1,
+    };
+    let dwm_rc = unsafe { DwmExtendFrameIntoClientArea(dwm_hwnd, &margins) };
+    if dwm_rc.is_err() {
+        return Err(format!("DwmExtendFrameIntoClientArea failed: {dwm_rc:?}"));
+    }
+
+    // Step 2: SetWindowCompositionAttribute as the belt to DWM's
+    // braces. ACCENT_ENABLE_TRANSPARENTGRADIENT with a zero gradient
+    // colour tells the DWM accent renderer to paint nothing — combined
+    // with step 1 the webview's alpha=0 pixels actually composite to
+    // "nothing" instead of black.
     let swca = resolve_swca()
         .ok_or_else(|| "SetWindowCompositionAttribute not found in user32".to_string())?;
     let rc = unsafe { swca(raw_hwnd, &mut data) };
