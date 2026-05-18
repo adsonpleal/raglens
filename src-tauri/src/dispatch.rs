@@ -38,17 +38,20 @@ pub fn dispatch_packet(
         emit_client_detected(app, new);
     }
 
-    if !connections.is_followed(ft) {
-        return;
-    }
-
     if payload.len() < 2 {
         return;
     }
     let opcode = u16::from_le_bytes([payload[0], payload[1]]);
 
-    if let Some(l) = logger.as_mut() {
-        let _ = l.log(ft, direction, opcode, payload);
+    // The `selected_pid` filter is logger-only — it keeps the opcode log
+    // focused on the character the user is debugging without starving
+    // the per-PID overlays of data from the other clients. Decoders see
+    // every PID and emit events tagged with the source PID; each
+    // overlay's hook filters on its own bound PID.
+    if connections.is_followed(ft) {
+        if let Some(l) = logger.as_mut() {
+            let _ = l.log(ft, direction, opcode, payload);
+        }
     }
 
     if let Some(decoder) = decoders::lookup(opcode) {

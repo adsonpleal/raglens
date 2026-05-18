@@ -92,6 +92,18 @@ impl ConnectionsState {
         })
     }
 
+    /// Returns the PID resolved for this FT at observe-time, if any.
+    /// Decoders use this so the per-PID overlays can filter by the
+    /// owning client without re-walking the TCP table for every packet.
+    pub fn pid_for(&self, ft: &FourTuple) -> Option<u32> {
+        self.connections.lock().unwrap().get(ft).and_then(|m| m.pid)
+    }
+
+    /// Returns the AID this FT belongs to, if 0x0283 has been decoded.
+    pub fn aid_for(&self, ft: &FourTuple) -> Option<u32> {
+        self.connections.lock().unwrap().get(ft).and_then(|m| m.aid)
+    }
+
     /// Bind an AID to the connection's metadata. Returns true if this
     /// is the first time we see an AID for this connection (so the
     /// dispatcher can fire a `client-updated` event).
