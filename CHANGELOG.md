@@ -7,6 +7,22 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-05-18
+
+### Corrigido
+
+- O overlay do XP meter não muda mais de tamanho aparente entre os
+  estados "aguardando" e "ativo". Antes, o placeholder
+  "Aguardando pacotes…" era renderizado como uma linha extra; quando
+  o primeiro pacote chegava, essa linha sumia e as linhas reais de
+  estatística passavam a ditar a altura, deixando um espaço vazio
+  ao final da janela que o usuário havia dimensionado. Agora as
+  linhas configuradas sempre são renderizadas (são elas que ditam
+  o tamanho natural do overlay) e ficam com `visibility: hidden`
+  enquanto não há dados; o "Aguardando pacotes…" é desenhado em
+  cima como overlay absoluto. A janela mantém o tamanho que o
+  usuário escolheu, independente do estado.
+
 ## [0.1.1] - 2026-05-18
 
 ### Corrigido
@@ -168,6 +184,7 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/adsonpleal/raglens/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/adsonpleal/raglens/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/adsonpleal/raglens/releases/tag/v0.1.0

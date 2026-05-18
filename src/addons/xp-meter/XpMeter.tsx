@@ -91,12 +91,19 @@ export function XpMeter({ pid, client: _client }: Props) {
     };
   }, [samples, totals, now, config.windowMs]);
 
+  // The configured rows always render — they're what dictates the
+  // overlay's natural content size. When we haven't seen a packet
+  // yet they go `visibility: hidden` (still occupy space) and the
+  // waiting placeholder is drawn on top as an absolutely-positioned
+  // overlay. This way the user-chosen rows drive the window size,
+  // not the waiting state, so disconnect/reconnect doesn't make
+  // the apparent overlay height jump around.
   return (
     <div className="xp-meter">
-      {!hasEverReceived && (
-        <div className="xp-meter__waiting">Aguardando pacotes…</div>
-      )}
-      <dl className="xp-meter__rows">
+      <dl
+        className="xp-meter__rows"
+        style={{ visibility: hasEverReceived ? "visible" : "hidden" }}
+      >
         {config.showBaseRate && (
           <Row label={labels.showBaseRate} value={formatNumber(stats.baseProjection)} />
         )}
@@ -122,6 +129,9 @@ export function XpMeter({ pid, client: _client }: Props) {
           <Row label={labels.showJobEta} value={formatDuration(stats.jobEta)} />
         )}
       </dl>
+      {!hasEverReceived && (
+        <div className="xp-meter__waiting">Aguardando pacotes…</div>
+      )}
     </div>
   );
 }
