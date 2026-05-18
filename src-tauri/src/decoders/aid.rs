@@ -21,32 +21,19 @@ pub fn decode(app: &AppHandle, ft: &FourTuple, _dir: Direction, payload: &[u8]) 
     let aid = u32::from_le_bytes([payload[2], payload[3], payload[4], payload[5]]);
     let state = app.state::<ConnectionsState>();
     if state.bind_aid(ft, aid) {
-        // The connection's PID was resolved at observe() time; relay it
-        // along so the frontend can update the matching client row.
-        let pid = pid_for(&state, ft);
+        // The PID was already resolved (and cached) when this
+        // connection was first observed — pulling it from the
+        // ConnectionsState avoids a second GetExtendedTcpTable walk
+        // per ZC_AID, and is also more reliable since the live TCP
+        // table can already be missing a short-lived connection by
+        // the time we look.
         emit_client_updated(
             app,
             ClientUpdate {
-                pid,
+                pid: state.pid_for(ft),
                 aid: Some(aid),
                 name: None,
             },
         );
     }
-}
-
-fn pid_for(state: &ConnectionsState, ft: &FourTuple) -> Option<u32> {
-    // list_clients aggregates connections, but for a single emit we
-    // just need this 4-tuple's PID. Re-resolve from the live TCP table —
-    // cheap, and avoids a method on ConnectionsState just for this.
-    let bytes: [u8; 4] = {
-        let mut parts = ft.client_ip.split('.');
-        let a = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-        let b = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-        let c = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-        let d = parts.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-        [a, b, c, d]
-    };
-    let _ = state; // silence unused warning when re-resolving via process module
-    crate::process::pid_for_local_endpoint(bytes, ft.client_port)
 }

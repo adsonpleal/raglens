@@ -28,15 +28,26 @@ import {
 export function useAddonShortcuts(shortcuts: Map<string, string>): void {
   // Tracks what's currently registered, keyed by addon id.
   const active = useRef<Map<string, string>>(new Map());
+  // Serialises the reconcile work so back-to-back shortcut-map
+  // changes don't have two reconciler runs racing on `active`. Each
+  // new effect run chains its work onto whatever's pending, then
+  // checks `tokenRef` mid-loop so an even-later run can short-circuit
+  // the current pass.
+  const queueRef = useRef<Promise<void>>(Promise.resolve());
+  const tokenRef = useRef(0);
 
   useEffect(() => {
-    let cancelled = false;
+    const myToken = ++tokenRef.current;
+    const desired = new Map(shortcuts);
 
-    (async () => {
+    queueRef.current = queueRef.current.then(async () => {
+      if (tokenRef.current !== myToken) return;
+
       // Unregister anything no longer wanted (addon disabled, or its
       // shortcut changed to something else / nothing).
       for (const [addonId, shortcut] of Array.from(active.current.entries())) {
-        if (shortcuts.get(addonId) === shortcut) continue;
+        if (tokenRef.current !== myToken) return;
+        if (desired.get(addonId) === shortcut) continue;
         try {
           await unregister(shortcut);
         } catch (e) {
@@ -46,11 +57,10 @@ export function useAddonShortcuts(shortcuts: Map<string, string>): void {
       }
 
       // Register anything new.
-      for (const [addonId, shortcut] of shortcuts) {
-        if (cancelled) return;
+      for (const [addonId, shortcut] of desired) {
+        if (tokenRef.current !== myToken) return;
         if (active.current.get(addonId) === shortcut) continue;
 
-        // The OS will reject a duplicate registration, so check first.
         try {
           if (await isRegistered(shortcut)) {
             console.warn(
@@ -80,11 +90,7 @@ export function useAddonShortcuts(shortcuts: Map<string, string>): void {
           console.warn(`[shortcut] register ${shortcut} for ${addonId} failed:`, e);
         }
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    });
   }, [shortcuts]);
 
   // Tear everything down on unmount so we don't leak handlers across

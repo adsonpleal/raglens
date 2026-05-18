@@ -90,9 +90,18 @@ pub fn start_capture(
     app: AppHandle,
     state: State<CaptureState>,
     connections: State<ConnectionsState>,
-    _ipv4: String,
+    ipv4: String,
 ) -> Result<(), String> {
     use tauri::Manager;
+
+    // Reject anything that isn't a plain dotted-quad before we embed
+    // the string into the WinDivert filter expression below. Inputs
+    // come from `list_interfaces` so they're trustworthy in practice,
+    // but the filter parser will accept arbitrary clauses and we'd
+    // rather hard-fail than let a malformed input change the filter.
+    if !is_valid_ipv4_literal(&ipv4) {
+        return Err(format!("invalid ipv4 address: {ipv4}"));
+    }
 
     let running = state.running.clone();
     if running.swap(true, Ordering::SeqCst) {
@@ -110,6 +119,7 @@ pub fn start_capture(
             running.clone(),
             handle_store,
             &conns,
+            &ipv4,
         ) {
             let _ = app_thread.emit("capture-error", e.to_string());
         }
@@ -118,6 +128,22 @@ pub fn start_capture(
     });
 
     Ok(())
+}
+
+fn is_valid_ipv4_literal(s: &str) -> bool {
+    let mut parts = s.split('.');
+    for _ in 0..4 {
+        let Some(p) = parts.next() else {
+            return false;
+        };
+        if p.is_empty() || p.len() > 3 || !p.chars().all(|c| c.is_ascii_digit()) {
+            return false;
+        }
+        if p.parse::<u8>().is_err() {
+            return false;
+        }
+    }
+    parts.next().is_none()
 }
 
 #[cfg(not(windows))]
@@ -131,6 +157,16 @@ pub fn start_capture(
 }
 
 pub fn stop_capture(state: State<CaptureState>) -> Result<(), String> {
+    shutdown_capture(&state);
+    Ok(())
+}
+
+/// Same shutdown logic as `stop_capture`, but callable from anywhere
+/// with a `&CaptureState` — used by the `RunEvent::Exit` hook in
+/// lib.rs so the capture thread isn't left blocked in
+/// `WinDivertRecv` when the user closes the window without clicking
+/// Parar.
+pub fn shutdown_capture(state: &CaptureState) {
     state.running.store(false, Ordering::SeqCst);
     let handle_opt = { *state.handle.lock().unwrap() };
     if let Some(h) = handle_opt {
@@ -138,7 +174,6 @@ pub fn stop_capture(state: State<CaptureState>) -> Result<(), String> {
             WinDivertShutdown(h as HANDLE, WINDIVERT_SHUTDOWN_BOTH);
         }
     }
-    Ok(())
 }
 
 // ---------- capture loop ----------
@@ -149,15 +184,24 @@ fn capture_loop(
     running: Arc<AtomicBool>,
     handle_store: Arc<Mutex<Option<usize>>>,
     connections: &ConnectionsState,
+    local_ipv4: &str,
 ) -> io::Result<()> {
-    // WinDivert filter language uses C-style && / ||.
-    let filter = "tcp && (tcp.SrcPort == 6900 || tcp.DstPort == 6900 \
-                       || tcp.SrcPort == 6951 || tcp.DstPort == 6951 \
-                       || tcp.SrcPort == 4500 || tcp.DstPort == 4500 \
-                       || (tcp.SrcPort >= 22000 && tcp.SrcPort <= 22100) \
-                       || (tcp.DstPort >= 22000 && tcp.DstPort <= 22100))";
+    // WinDivert filter language uses C-style && / ||. Constrain to
+    // packets where the local IP of the selected adapter is either
+    // the source or the destination — fixes the long-standing bug
+    // where the NIC dropdown was decorative because WinDivert at
+    // the network layer sees every adapter.
+    let filter = format!(
+        "tcp && (ip.SrcAddr == {ip} || ip.DstAddr == {ip}) \
+                && (tcp.SrcPort == 6900 || tcp.DstPort == 6900 \
+                 || tcp.SrcPort == 6951 || tcp.DstPort == 6951 \
+                 || tcp.SrcPort == 4500 || tcp.DstPort == 4500 \
+                 || (tcp.SrcPort >= 22000 && tcp.SrcPort <= 22100) \
+                 || (tcp.DstPort >= 22000 && tcp.DstPort <= 22100))",
+        ip = local_ipv4,
+    );
 
-    let filter_c = CString::new(filter).expect("filter contains NUL byte");
+    let filter_c = CString::new(filter.as_str()).expect("filter contains NUL byte");
     eprintln!("[capture] opening WinDivert handle (filter: {filter})");
 
     let handle = unsafe {

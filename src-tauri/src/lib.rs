@@ -67,6 +67,19 @@ pub fn run() {
             foreground::get_foreground_pid,
             raglens_pid,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Tear down the background threads on app exit. Without
+            // this, the capture thread sits blocked in WinDivertRecv
+            // and the foreground watcher keeps polling, both firing
+            // emits at an event bus that's tearing down underneath
+            // them. WinDivertShutdown unblocks recv; the watcher's
+            // running flag exits the poll loop on its next tick.
+            if let tauri::RunEvent::Exit = event {
+                let capture_state = app_handle.state::<capture::CaptureState>();
+                capture::shutdown_capture(capture_state.inner());
+                app_handle.state::<ForegroundWatcherState>().stop();
+            }
+        });
 }

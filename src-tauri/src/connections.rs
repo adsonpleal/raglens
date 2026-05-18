@@ -74,18 +74,38 @@ impl ConnectionsState {
     /// at observe time. Returns the meta only for new tuples — callers
     /// use this to gate the `client-detected` event so we don't spam.
     pub fn observe(&self, ft: &FourTuple) -> Option<NewConnection> {
+        // Quick pre-check under the lock — bail without spending a
+        // syscall on a tuple we've already seen.
+        {
+            let map = self.connections.lock().unwrap();
+            if map.contains_key(ft) {
+                return None;
+            }
+        }
+
+        // PID lookup is a Win32 GetExtendedTcpTable round-trip; doing
+        // it while holding the connections mutex would block every
+        // other in-flight packet for the same client behind one
+        // possibly-slow syscall. Resolve outside the lock.
+        let pid = parse_ipv4(&ft.client_ip)
+            .and_then(|ip| process::pid_for_local_endpoint(ip, ft.client_port));
+
+        // Re-acquire the lock to insert. Another thread may have
+        // beaten us to it for the same FT, in which case we treat
+        // this as "not new" — the first observer wins the
+        // client-detected event.
         let mut map = self.connections.lock().unwrap();
         if map.contains_key(ft) {
             return None;
         }
-        let client_ip = parse_ipv4(&ft.client_ip);
-        let pid = client_ip.and_then(|ip| process::pid_for_local_endpoint(ip, ft.client_port));
-        let meta = ConnectionMeta {
-            pid,
-            aid: None,
-            first_seen_unix_ms: unix_ms(),
-        };
-        map.insert(ft.clone(), meta.clone());
+        map.insert(
+            ft.clone(),
+            ConnectionMeta {
+                pid,
+                aid: None,
+                first_seen_unix_ms: unix_ms(),
+            },
+        );
         Some(NewConnection {
             four_tuple: ft.clone(),
             pid,

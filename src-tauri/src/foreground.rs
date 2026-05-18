@@ -39,6 +39,14 @@ impl ForegroundWatcherState {
             run_poll_loop(app, running);
         });
     }
+
+    /// Signal the polling thread to exit on its next tick. Called
+    /// from the `RunEvent::Exit` handler in lib.rs so the thread
+    /// doesn't keep firing `foreground-changed` events into a
+    /// shutting-down event bus.
+    pub fn stop(&self) {
+        self.running.store(false, Ordering::SeqCst);
+    }
 }
 
 fn run_poll_loop(app: AppHandle, running: Arc<AtomicBool>) {
