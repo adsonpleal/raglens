@@ -1,45 +1,53 @@
+/* Sized and styled to blend with Ragnarok's HUD: transparent
+ * background, white text with a 1px black outline (text-shadow),
+ * Tahoma 11px to match RO's in-game widgets. */
+
 .xp-meter {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 1px;
   width: 100%;
   height: 100%;
+  /* 8-direction outline so the text reads against any RO background. */
+  text-shadow:
+    1px 0 0 #000,
+    -1px 0 0 #000,
+    0 1px 0 #000,
+    0 -1px 0 #000,
+    1px 1px 0 #000,
+    -1px 1px 0 #000,
+    1px -1px 0 #000,
+    -1px -1px 0 #000;
 }
 
 .xp-meter__title {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: #b8b8c4;
-  margin-bottom: 2px;
+  font-weight: bold;
+  color: #ffe070; /* RO-style yellow for character / header text */
+  margin-bottom: 1px;
 }
 
 .xp-meter__waiting {
-  font-size: 11px;
-  color: #d4c89a;
-  opacity: 0.85;
-  margin-bottom: 4px;
+  color: #ffb070;
+  font-style: italic;
+  margin-bottom: 2px;
 }
 
 .xp-meter__rows {
   display: grid;
-  grid-template-columns: 1fr auto;
-  row-gap: 4px;
-  column-gap: 14px;
+  grid-template-columns: auto 1fr;
+  row-gap: 0;
+  column-gap: 6px;
   margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
 .xp-meter__rows dt {
-  font-size: 12px;
-  color: #b8b8c4;
+  color: #d8d8d8;
+  font-weight: normal;
 }
 
 .xp-meter__rows dd {
-  font-size: 13px;
-  font-weight: 600;
   margin: 0;
-  color: #f1f1f6;
+  color: #ffffff;
   text-align: right;
 }

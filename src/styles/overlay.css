@@ -5,9 +5,10 @@ body,
   padding: 0;
   height: 100%;
   background: transparent;
-  color: #e6e6ec;
-  font-family: "NanumGothic", "Malgun Gothic", "Segoe UI", system-ui, sans-serif;
-  font-size: 13px;
+  color: #ffffff;
+  font-family: Tahoma, "Lucida Sans Unicode", Verdana, "Segoe UI", sans-serif;
+  font-size: 11px;
+  line-height: 1.25;
   user-select: none;
   cursor: default;
 }
@@ -22,17 +23,9 @@ body,
 
 .overlay-body {
   flex: 1;
-  margin: 4px;
-  padding: 12px 14px;
-  background: rgba(15, 15, 20, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(6px);
-}
-
-.overlay-placeholder {
-  font-size: 12px;
-  line-height: 1.4;
-  margin: 0;
+  padding: 3px 5px;
+  /* Near-zero alpha so the entire window area is "visible" enough to
+   * the OS to receive pointer events (the JS-driven drag needs to grab
+   * empty space, not just the text). Practically invisible to the eye. */
+  background: rgba(0, 0, 0, 0.01);
 }
