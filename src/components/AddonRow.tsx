@@ -39,12 +39,14 @@ export function AddonRow({
               />
               <span>{t.addons.alwaysVisible}</span>
             </label>
-            <button
-              className="ghost"
-              onClick={() => onLockToggle(!locked)}
-            >
-              {locked ? t.addons.unlock : t.addons.lock}
-            </button>
+            <label className="addon-check">
+              <input
+                type="checkbox"
+                checked={locked}
+                onChange={(e) => onLockToggle(e.target.checked)}
+              />
+              <span>{t.addons.locked}</span>
+            </label>
             <button className="ghost" onClick={onConfigure}>
               {t.addons.configure}
             </button>

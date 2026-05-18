@@ -9,6 +9,8 @@ export type XpMeterConfig = {
   showJobPercent: boolean;
   showBaseEta: boolean;
   showJobEta: boolean;
+  /** Rolling window (in ms) used for the XP/min and ETA calcs. */
+  windowMs: number;
 };
 
 export const xpMeterDefaultConfig: XpMeterConfig = {
@@ -18,9 +20,28 @@ export const xpMeterDefaultConfig: XpMeterConfig = {
   showJobPercent: true,
   showBaseEta: true,
   showJobEta: true,
+  windowMs: 5 * 60_000,
 };
 
-export const xpMeterRowLabels: Record<keyof XpMeterConfig, string> = {
+/** Allowed window values for the radio group in the settings modal.
+ *  Predefined rather than freeform so a typo can't put the meter
+ *  into an unusable state. */
+export const xpMeterWindowOptions: ReadonlyArray<{
+  label: string;
+  value: number;
+}> = [
+  { label: "1 min", value: 60_000 },
+  { label: "5 min", value: 5 * 60_000 },
+  { label: "15 min", value: 15 * 60_000 },
+  { label: "30 min", value: 30 * 60_000 },
+  { label: "1 h", value: 60 * 60_000 },
+];
+
+/** Boolean keys in `XpMeterConfig` — i.e. the per-row visibility
+ *  flags. Excludes `windowMs` (number). */
+export type XpMeterRowKey = Exclude<keyof XpMeterConfig, "windowMs">;
+
+export const xpMeterRowLabels: Record<XpMeterRowKey, string> = {
   showBaseRate: "XP base/min",
   showJobRate: "XP job/min",
   showBasePercent: "% base/min",

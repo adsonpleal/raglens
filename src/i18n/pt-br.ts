@@ -20,8 +20,7 @@ export const t = {
   },
   addons: {
     title: "Addons",
-    lock: "Travar",
-    unlock: "Destravar",
+    locked: "Travado",
     lockAll: "Travar overlays",
     unlockAll: "Destravar overlays",
     alwaysVisible: "Sempre visível",

@@ -12,7 +12,10 @@ import { onExpGain, onExpTotal } from "../../lib/events";
 import type { ExpField, ExpGain } from "../../lib/types";
 import type { ExpSample } from "./format";
 
-const HISTORY_LIMIT = 600;
+// Retain samples for slightly longer than the largest selectable
+// window (1 hour) so switching to the wider window in the settings
+// modal immediately has data to work with.
+const MAX_HISTORY_MS = 75 * 60_000;
 
 export type XpTotals = {
   base: number | null;
@@ -63,10 +66,10 @@ export function useXpEvents(pid: number): XpEventsState {
         kind: gain.kind,
       };
       setSamples((prev) => {
-        const next = prev.concat(sample);
-        return next.length > HISTORY_LIMIT
-          ? next.slice(next.length - HISTORY_LIMIT)
-          : next;
+        const cutoff = sample.timestampMs - MAX_HISTORY_MS;
+        const trimmed = prev.filter((s) => s.timestampMs > cutoff);
+        trimmed.push(sample);
+        return trimmed;
       });
       setLastGain(gain);
       if (!hasEverReceivedRef.current) {

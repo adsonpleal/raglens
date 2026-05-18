@@ -375,3 +375,22 @@ button.ghost {
   accent-color: #3d6e3d;
   cursor: pointer;
 }
+
+.modal-radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.modal-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+.modal-radio input[type="radio"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3d6e3d;
+  cursor: pointer;
+}

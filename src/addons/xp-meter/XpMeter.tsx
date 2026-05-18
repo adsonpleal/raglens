@@ -3,7 +3,6 @@ import { useAddonConfig } from "../../hooks/useAddonConfig";
 import type { ClientInfo } from "../../lib/types";
 import { xpMeterDefaultConfig } from "./config";
 import {
-  DEFAULT_WINDOW_MS,
   etaToNextLevelMs,
   formatDuration,
   formatNumber,
@@ -36,8 +35,8 @@ export function XpMeter({ pid, client: _client }: Props) {
   }, []);
 
   const stats = useMemo(() => {
-    const baseRate = xpPerMinute(samples, "base", now, DEFAULT_WINDOW_MS);
-    const jobRate = xpPerMinute(samples, "job", now, DEFAULT_WINDOW_MS);
+    const baseRate = xpPerMinute(samples, "base", now, config.windowMs);
+    const jobRate = xpPerMinute(samples, "job", now, config.windowMs);
     const baseRemaining =
       totals.base != null && totals.nextBase != null
         ? Math.max(0, totals.nextBase - totals.base)
@@ -63,7 +62,7 @@ export function XpMeter({ pid, client: _client }: Props) {
         ? etaToNextLevelMs(jobRate, jobRemaining)
         : Number.POSITIVE_INFINITY;
     return { baseRate, jobRate, basePercent, jobPercent, baseEta, jobEta };
-  }, [samples, totals, now]);
+  }, [samples, totals, now, config.windowMs]);
 
   return (
     <div className="xp-meter">
