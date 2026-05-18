@@ -66,13 +66,17 @@ export function OverlayHost({ addonId, pid }: Props) {
       const ownPid = await raglensPid();
       const apply = async (fg: number | null) => {
         if (cancelled) return;
-        const visible = fg === pid || fg === ownPid;
-        if (visible) await w.show();
-        else await w.hide();
+        // Default-visible if the OS hasn't reported a foreground PID
+        // yet — better than hiding while we wait for the first event.
+        const visible = fg === null || fg === pid || fg === ownPid;
+        try {
+          if (visible) await w.show();
+          else await w.hide();
+        } catch (e) {
+          console.error(`[overlay] show/hide failed (pid=${pid}):`, e);
+        }
       };
 
-      // Seed once so the overlay doesn't flash visible-then-hide on
-      // first paint.
       const initial = await getForegroundPid();
       if (cancelled) return;
       await apply(initial);
