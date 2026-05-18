@@ -11,12 +11,14 @@ modificado.
 
 ## ⬇ Download
 
-A primeira release ainda não foi publicada. Quando sair, o link será:
+[**raglens-v0.1.0-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.0-setup.exe)
+— instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
+embutido; basta executar e seguir o instalador. O Raglens é configurado
+para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
+isso é necessário pra capturar pacotes de rede).
 
-`raglens-vX.Y.Z-setup.exe` — instalador único para Windows 10/11. Já
-inclui o WinDivert embutido; basta executar e seguir o instalador. O
-Raglens é configurado para sempre rodar como Administrador (vai aparecer
-um UAC ao iniciar — isso é necessário pra capturar pacotes de rede).
+Veja também a [página de releases](https://github.com/adsonpleal/raglens/releases)
+para versões anteriores e o `SHA256SUMS.txt` correspondente.
 
 ### ⚠ Aviso do SmartScreen "Windows protegeu seu PC"
 
