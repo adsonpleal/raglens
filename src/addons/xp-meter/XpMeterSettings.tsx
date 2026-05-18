@@ -40,7 +40,10 @@ export function XpMeterSettings() {
     });
   };
 
-  const rows = Object.entries(xpMeterRowLabels) as [XpMeterRowKey, string][];
+  const rows = Object.entries(xpMeterRowLabels(config.windowMs)) as [
+    XpMeterRowKey,
+    string,
+  ][];
 
   return (
     <>

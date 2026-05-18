@@ -41,11 +41,28 @@ export const xpMeterWindowOptions: ReadonlyArray<{
  *  flags. Excludes `windowMs` (number). */
 export type XpMeterRowKey = Exclude<keyof XpMeterConfig, "windowMs">;
 
-export const xpMeterRowLabels: Record<XpMeterRowKey, string> = {
-  showBaseRate: "XP base/min",
-  showJobRate: "XP job/min",
-  showBasePercent: "% base/min",
-  showJobPercent: "% job/min",
-  showBaseEta: "ETA base",
-  showJobEta: "ETA job",
-};
+/** Compact suffix used in row labels — e.g. "5min" or "1h". The
+ *  XP/% rows append this to communicate "value is summed over the
+ *  selected window", whereas ETAs are absolute durations and don't
+ *  carry the suffix. */
+export function xpMeterWindowSuffix(windowMs: number): string {
+  if (windowMs % (60 * 60_000) === 0) {
+    const hours = windowMs / (60 * 60_000);
+    return `${hours}h`;
+  }
+  return `${windowMs / 60_000}min`;
+}
+
+export function xpMeterRowLabels(
+  windowMs: number,
+): Record<XpMeterRowKey, string> {
+  const s = xpMeterWindowSuffix(windowMs);
+  return {
+    showBaseRate: `XP base/${s}`,
+    showJobRate: `XP job/${s}`,
+    showBasePercent: `% base/${s}`,
+    showJobPercent: `% job/${s}`,
+    showBaseEta: "ETA base",
+    showJobEta: "ETA job",
+  };
+}
