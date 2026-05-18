@@ -1,5 +1,9 @@
 import { listen, UnlistenFn } from "@tauri-apps/api/event";
-import type { CaptureStats, ConnectionInfo } from "./types";
+import type {
+  CaptureStats,
+  ClientDetected,
+  ClientUpdate,
+} from "./types";
 
 export function onCaptureStarted(handler: () => void): Promise<UnlistenFn> {
   return listen("capture-started", () => handler());
@@ -17,8 +21,14 @@ export function onCaptureStats(handler: (stats: CaptureStats) => void): Promise<
   return listen<CaptureStats>("capture-stats", (e) => handler(e.payload));
 }
 
-export function onConnectionDetected(
-  handler: (info: ConnectionInfo) => void,
+export function onClientDetected(
+  handler: (info: ClientDetected) => void,
 ): Promise<UnlistenFn> {
-  return listen<ConnectionInfo>("connection-detected", (e) => handler(e.payload));
+  return listen<ClientDetected>("client-detected", (e) => handler(e.payload));
+}
+
+export function onClientUpdated(
+  handler: (update: ClientUpdate) => void,
+): Promise<UnlistenFn> {
+  return listen<ClientUpdate>("client-updated", (e) => handler(e.payload));
 }

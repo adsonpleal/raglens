@@ -3,9 +3,9 @@
 // Fed by the capture loop with one TCP payload at a time. Reads the
 // 2-byte little-endian opcode header, optionally writes a line to the
 // dev opcode logger, then looks up a registered decoder and lets it
-// emit its own typed event. With no decoders registered, only the
-// logger sees the payload — which is exactly what we want while we
-// identify opcodes from a live session.
+// emit its own typed event. With no decoders registered for an opcode,
+// only the logger sees the payload — which is exactly what we want
+// while we identify opcodes from a live session.
 //
 // Caveat: we do not reassemble TCP. Most RO server-to-client packets
 // fit in one segment; segments that span a boundary will be dropped
@@ -13,7 +13,7 @@
 // move reassembly into capture.rs as a per-stream byte buffer
 // (see Ragmarket's `useCapture.ts` for the same pattern, frontend-side).
 
-use crate::connections::{emit_connection_detected, ConnectionsState, FourTuple};
+use crate::connections::{emit_client_detected, ConnectionsState, FourTuple};
 use crate::decoders;
 use crate::logger::OpcodeLogger;
 use serde::Serialize;
@@ -34,11 +34,11 @@ pub fn dispatch_packet(
     connections: &ConnectionsState,
     logger: &mut Option<OpcodeLogger>,
 ) {
-    if connections.observe(ft) {
-        emit_connection_detected(app, ft);
+    if let Some(new) = connections.observe(ft) {
+        emit_client_detected(app, new);
     }
 
-    if !connections.is_selected(ft) {
+    if !connections.is_followed(ft) {
         return;
     }
 

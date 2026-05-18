@@ -1,14 +1,30 @@
-// Connection tracking + per-connection filter.
+// Tracks observed TCP 4-tuples and aggregates them into "clients"
+// keyed by owning PID.
 //
-// latamRO allows multi-cliente, so a single capture session can observe
-// several Ragnarok client ↔ map-server flows interleaved. We canonicalize
-// each observed 4-tuple (collapsing the two directions into one) and let
-// the user pick which one to "follow" — packets from non-followed
-// connections are dropped before dispatch.
+// latamRO multi-cliente means several Ragexe.exe processes can be
+// running at once; each process opens a new TCP connection to the
+// map-server every time the player changes maps. So 4-tuples die
+// quickly, but the owning PID is stable per character session and
+// gives us a usable filter key.
+//
+// Identity discovery layers, all optional, all best-effort:
+//   1. PID            → resolved at observe() via Win32 TCP table
+//                       (process.rs). Available immediately.
+//   2. AID            → bound when the 0x0283 ZC_AID packet fires on
+//                       a connection of that PID.
+//   3. Character name → bound when 0x0a30 ZC_ACK_REQNAME_TITLE fires
+//                       with a matching AID. AID→name is global since
+//                       one AID always belongs to one character.
+//
+// The UI shows whichever of those three is most specific:
+//     "Tucano · AID 1031076 · PID 15916"
+//   → "AID 1031076 · PID 15916"
+//   → "PID 15916 · Ragexe.exe · aberto às 11:31"
 
+use crate::process;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Emitter, State};
 
@@ -20,64 +36,163 @@ pub struct FourTuple {
     pub server_port: u16,
 }
 
+#[derive(Clone, Debug)]
+struct ConnectionMeta {
+    pid: Option<u32>,
+    aid: Option<u32>,
+    first_seen_unix_ms: u64,
+}
+
 #[derive(Serialize, Clone, Debug)]
-pub struct ConnectionInfo {
-    pub four_tuple: FourTuple,
+pub struct ClientInfo {
+    pub pid: Option<u32>,
+    pub aid: Option<u32>,
+    pub name: Option<String>,
+    pub process_name: Option<String>,
+    pub process_creation_unix_ms: Option<u64>,
+    pub connection_count: usize,
     pub first_seen_unix_ms: u64,
 }
 
 #[derive(Default)]
 pub struct ConnectionsState {
-    pub observed: Arc<Mutex<HashMap<FourTuple, u64>>>,
-    pub selected: Arc<Mutex<Option<FourTuple>>>,
+    connections: Mutex<HashMap<FourTuple, ConnectionMeta>>,
+    /// AID → character name. Global because one AID owns one character.
+    names: Mutex<HashMap<u32, String>>,
+    /// PID currently being followed. None = follow everything.
+    selected_pid: Mutex<Option<u32>>,
 }
 
 impl ConnectionsState {
     pub fn reset(&self) {
-        self.observed.lock().unwrap().clear();
-        *self.selected.lock().unwrap() = None;
+        self.connections.lock().unwrap().clear();
+        self.names.lock().unwrap().clear();
+        *self.selected_pid.lock().unwrap() = None;
     }
 
-    pub fn observe(&self, ft: &FourTuple) -> bool {
-        let mut map = self.observed.lock().unwrap();
+    /// Record a 4-tuple if it's new. Resolves the owning PID once,
+    /// at observe time. Returns the meta only for new tuples — callers
+    /// use this to gate the `client-detected` event so we don't spam.
+    pub fn observe(&self, ft: &FourTuple) -> Option<NewConnection> {
+        let mut map = self.connections.lock().unwrap();
         if map.contains_key(ft) {
+            return None;
+        }
+        let client_ip = parse_ipv4(&ft.client_ip);
+        let pid = client_ip.and_then(|ip| process::pid_for_local_endpoint(ip, ft.client_port));
+        let meta = ConnectionMeta {
+            pid,
+            aid: None,
+            first_seen_unix_ms: unix_ms(),
+        };
+        map.insert(ft.clone(), meta.clone());
+        Some(NewConnection {
+            four_tuple: ft.clone(),
+            pid,
+        })
+    }
+
+    /// Bind an AID to the connection's metadata. Returns true if this
+    /// is the first time we see an AID for this connection (so the
+    /// dispatcher can fire a `client-updated` event).
+    pub fn bind_aid(&self, ft: &FourTuple, aid: u32) -> bool {
+        let mut map = self.connections.lock().unwrap();
+        if let Some(meta) = map.get_mut(ft) {
+            if meta.aid != Some(aid) {
+                meta.aid = Some(aid);
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Cache an AID→name mapping. Returns true if the mapping changed.
+    pub fn bind_name(&self, aid: u32, name: String) -> bool {
+        let mut names = self.names.lock().unwrap();
+        if names.get(&aid) == Some(&name) {
             return false;
         }
-        map.insert(ft.clone(), unix_ms());
+        names.insert(aid, name);
         true
     }
 
-    pub fn snapshot(&self) -> Vec<ConnectionInfo> {
-        let map = self.observed.lock().unwrap();
-        let mut out: Vec<ConnectionInfo> = map
-            .iter()
-            .map(|(ft, &ts)| ConnectionInfo {
-                four_tuple: ft.clone(),
-                first_seen_unix_ms: ts,
-            })
-            .collect();
+    /// Filter predicate used by dispatch. With no selection, every
+    /// observed tuple passes. With a selected PID, only tuples whose
+    /// owning PID matches.
+    pub fn is_followed(&self, ft: &FourTuple) -> bool {
+        let selected = *self.selected_pid.lock().unwrap();
+        let Some(want) = selected else { return true };
+        let map = self.connections.lock().unwrap();
+        matches!(map.get(ft).and_then(|m| m.pid), Some(pid) if pid == want)
+    }
+
+    /// Aggregate the connection table into one entry per owning PID.
+    /// Connections with no resolvable PID land under a single
+    /// "unknown" bucket (pid = None).
+    pub fn list_clients(&self) -> Vec<ClientInfo> {
+        let map = self.connections.lock().unwrap();
+        let names = self.names.lock().unwrap();
+        let mut by_pid: HashMap<Option<u32>, ClientInfo> = HashMap::new();
+        for meta in map.values() {
+            let entry = by_pid.entry(meta.pid).or_insert(ClientInfo {
+                pid: meta.pid,
+                aid: None,
+                name: None,
+                process_name: None,
+                process_creation_unix_ms: None,
+                connection_count: 0,
+                first_seen_unix_ms: meta.first_seen_unix_ms,
+            });
+            entry.connection_count += 1;
+            if entry.first_seen_unix_ms > meta.first_seen_unix_ms {
+                entry.first_seen_unix_ms = meta.first_seen_unix_ms;
+            }
+            if entry.aid.is_none() {
+                entry.aid = meta.aid;
+            }
+        }
+        // Drop the locks before reaching out to OpenProcess.
+        drop(map);
+        let names_clone = names.clone();
+        drop(names);
+
+        let mut out: Vec<ClientInfo> = by_pid.into_values().collect();
+        for c in &mut out {
+            if c.name.is_none() {
+                if let Some(aid) = c.aid {
+                    c.name = names_clone.get(&aid).cloned();
+                }
+            }
+            if let Some(pid) = c.pid {
+                let info = process::process_info(pid);
+                c.process_name = info.name;
+                c.process_creation_unix_ms = info.creation_unix_ms;
+            }
+        }
         out.sort_by_key(|c| c.first_seen_unix_ms);
         out
     }
-
-    /// Returns true when the tuple should be dispatched. With no selection,
-    /// every observed tuple is followed.
-    pub fn is_selected(&self, ft: &FourTuple) -> bool {
-        match self.selected.lock().unwrap().as_ref() {
-            Some(sel) => sel == ft,
-            None => true,
-        }
-    }
 }
 
-pub fn emit_connection_detected(app: &AppHandle, ft: &FourTuple) {
-    let _ = app.emit(
-        "connection-detected",
-        ConnectionInfo {
-            four_tuple: ft.clone(),
-            first_seen_unix_ms: unix_ms(),
-        },
-    );
+#[derive(Serialize, Clone, Debug)]
+pub struct NewConnection {
+    pub four_tuple: FourTuple,
+    pub pid: Option<u32>,
+}
+
+#[derive(Serialize, Clone, Debug)]
+pub struct ClientUpdate {
+    pub pid: Option<u32>,
+    pub aid: Option<u32>,
+    pub name: Option<String>,
+}
+
+pub fn emit_client_detected(app: &AppHandle, new: NewConnection) {
+    let _ = app.emit("client-detected", new);
+}
+
+pub fn emit_client_updated(app: &AppHandle, update: ClientUpdate) {
+    let _ = app.emit("client-updated", update);
 }
 
 fn unix_ms() -> u64 {
@@ -87,22 +202,33 @@ fn unix_ms() -> u64 {
         .unwrap_or(0)
 }
 
+fn parse_ipv4(s: &str) -> Option<[u8; 4]> {
+    let mut parts = s.split('.');
+    let a = parts.next()?.parse().ok()?;
+    let b = parts.next()?.parse().ok()?;
+    let c = parts.next()?.parse().ok()?;
+    let d = parts.next()?.parse().ok()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some([a, b, c, d])
+}
+
+// ---- Tauri commands ----
+
 #[tauri::command]
-pub fn list_connections(state: State<ConnectionsState>) -> Vec<ConnectionInfo> {
-    state.snapshot()
+pub fn list_clients(state: State<ConnectionsState>) -> Vec<ClientInfo> {
+    state.list_clients()
 }
 
 #[tauri::command]
-pub fn select_connection(
-    four_tuple: FourTuple,
-    state: State<ConnectionsState>,
-) -> Result<(), String> {
-    *state.selected.lock().unwrap() = Some(four_tuple);
+pub fn select_client(pid: u32, state: State<ConnectionsState>) -> Result<(), String> {
+    *state.selected_pid.lock().unwrap() = Some(pid);
     Ok(())
 }
 
 #[tauri::command]
-pub fn clear_connection_selection(state: State<ConnectionsState>) -> Result<(), String> {
-    *state.selected.lock().unwrap() = None;
+pub fn clear_client_selection(state: State<ConnectionsState>) -> Result<(), String> {
+    *state.selected_pid.lock().unwrap() = None;
     Ok(())
 }

@@ -5,6 +5,7 @@ mod dispatch;
 mod interfaces;
 mod logger;
 mod packet;
+mod process;
 
 use capture::CaptureState;
 use connections::ConnectionsState;
@@ -42,9 +43,9 @@ pub fn run() {
             list_interfaces,
             start_capture,
             stop_capture,
-            connections::list_connections,
-            connections::select_connection,
-            connections::clear_connection_selection,
+            connections::list_clients,
+            connections::select_client,
+            connections::clear_client_selection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

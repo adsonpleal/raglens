@@ -38,6 +38,11 @@ windows = { version = "0.58", features = [
   # Required for GetAdaptersAddresses / IP_ADAPTER_ADDRESSES_LH —
   # they're gated behind this Ndis feature in windows 0.58.
   "Win32_NetworkManagement_Ndis",
+  # Process info for the client picker: PID owner of a TCP 4-tuple
+  # (GetExtendedTcpTable), executable name and creation time.
+  "Win32_System_Threading",
+  "Win32_System_ProcessStatus",
+  "Win32_Foundation",
 ] }
 
 [profile.release]

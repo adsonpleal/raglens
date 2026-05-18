@@ -1,9 +1,9 @@
 import { AddonRow } from "../components/AddonRow";
-import { ConnectionPicker } from "../components/ConnectionPicker";
+import { ClientPicker } from "../components/ClientPicker";
 import { NicPicker } from "../components/NicPicker";
 import { useAddonState } from "../hooks/useAddonState";
 import { useCaptureSession } from "../hooks/useCaptureSession";
-import { useConnections } from "../hooks/useConnections";
+import { useClients } from "../hooks/useClients";
 import { t } from "../i18n/pt-br";
 
 export function MainWindow() {
@@ -18,8 +18,8 @@ export function MainWindow() {
     stop,
   } = useCaptureSession();
   const isRecording = status === "recording";
-  const { connections, selected, selectOne, followAll } =
-    useConnections(isRecording);
+  const { clients, selectedPid, selectOne, followAll } =
+    useClients(isRecording);
   const {
     manifests,
     enabled,
@@ -73,22 +73,22 @@ export function MainWindow() {
 
         <section className="card">
           <div className="card-header">
-            <h2>{t.connections.title}</h2>
-            {selected && (
+            <h2>{t.clients.title}</h2>
+            {selectedPid !== null && (
               <button className="ghost" onClick={followAll}>
-                {t.connections.followAll}
+                {t.clients.followAll}
               </button>
             )}
           </div>
           {isRecording ? (
-            <ConnectionPicker
-              connections={connections}
-              selected={selected}
+            <ClientPicker
+              clients={clients}
+              selectedPid={selectedPid}
               onSelect={selectOne}
-              emptyMessage={t.connections.empty}
+              emptyMessage={t.clients.empty}
             />
           ) : (
-            <p className="muted">{t.connections.inactive}</p>
+            <p className="muted">{t.clients.inactive}</p>
           )}
         </section>
 

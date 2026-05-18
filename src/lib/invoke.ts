@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ConnectionInfo, FourTuple, NetworkInterface } from "./types";
+import type { ClientInfo, NetworkInterface } from "./types";
 
 export function listInterfaces(): Promise<NetworkInterface[]> {
   return invoke("list_interfaces");
@@ -13,14 +13,14 @@ export function stopCapture(): Promise<void> {
   return invoke("stop_capture");
 }
 
-export function listConnections(): Promise<ConnectionInfo[]> {
-  return invoke("list_connections");
+export function listClients(): Promise<ClientInfo[]> {
+  return invoke("list_clients");
 }
 
-export function selectConnection(fourTuple: FourTuple): Promise<void> {
-  return invoke("select_connection", { fourTuple });
+export function selectClient(pid: number): Promise<void> {
+  return invoke("select_client", { pid });
 }
 
-export function clearConnectionSelection(): Promise<void> {
-  return invoke("clear_connection_selection");
+export function clearClientSelection(): Promise<void> {
+  return invoke("clear_client_selection");
 }

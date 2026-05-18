@@ -11,11 +11,12 @@ export const t = {
     stop: "Parar Captura",
     statsTemplate: "{seen} pacotes vistos · {matched} relevantes",
   },
-  connections: {
-    title: "Conexões detectadas",
-    empty: "Nenhuma conexão observada ainda. Inicie a captura e jogue um pouco.",
-    inactive: "Inicie a captura para detectar conexões.",
-    followAll: "Seguir todas",
+  clients: {
+    title: "Clientes detectados",
+    empty:
+      "Nenhum cliente Ragnarok detectado ainda. Inicie a captura e aguarde alguns segundos.",
+    inactive: "Inicie a captura para detectar clientes.",
+    followAll: "Seguir todos",
   },
   addons: {
     title: "Addons",

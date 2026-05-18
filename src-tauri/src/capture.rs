@@ -92,6 +92,8 @@ pub fn start_capture(
     connections: State<ConnectionsState>,
     _ipv4: String,
 ) -> Result<(), String> {
+    use tauri::Manager;
+
     let running = state.running.clone();
     if running.swap(true, Ordering::SeqCst) {
         return Err("capture already running".into());
@@ -100,15 +102,15 @@ pub fn start_capture(
     connections.reset();
 
     let handle_store = state.handle.clone();
-    let observed = connections.observed.clone();
-    let selected = connections.selected.clone();
     let app_thread = app.clone();
     std::thread::spawn(move || {
-        let connections = ConnectionsState {
-            observed,
-            selected,
-        };
-        if let Err(e) = capture_loop(app_thread.clone(), running.clone(), handle_store, &connections) {
+        let conns = app_thread.state::<ConnectionsState>();
+        if let Err(e) = capture_loop(
+            app_thread.clone(),
+            running.clone(),
+            handle_store,
+            &conns,
+        ) {
             let _ = app_thread.emit("capture-error", e.to_string());
         }
         running.store(false, Ordering::SeqCst);
