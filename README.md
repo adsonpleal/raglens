@@ -43,7 +43,7 @@ do arquivo baixado com o `SHA256SUMS.txt` da mesma release.
 
 | Addon | Descrição | Status |
 |---|---|---|
-| **Medidor de Experiência** | XP/min, %/min e ETA para o próximo nível (base e job). | Placeholder — aguardando identificação do opcode `ZC_NOTIFY_EXP` do latamRO. |
+| **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 min / 5 min / 15 min / 30 min / 1 h). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
 
 A lista cresce; cada addon vive em `src/addons/<id>/` com seu manifesto,
 componente React e (quando aplicável) decodificador em
@@ -63,8 +63,8 @@ processa. A leitura acontece no nível do driver de rede (via WinDivert),
 antes do cliente sequer interpretar.
 
 Cada addon converte esses bytes em informação útil (XP/min, ETA, etc.) e
-desenha numa janela transparente que você posiciona em cima do cliente.
-A janela é só uma camada por cima — o cliente nem sabe que ela existe.
+desenha numa janela em cima do cliente. A janela é só uma camada por
+cima — o cliente nem sabe que ela existe.
 
 ### 2. Posso levar ban se usar?
 
@@ -92,7 +92,9 @@ mesmo privilégio pelo mesmo motivo.
 ### 4. Funciona em Wi-Fi ou só em cabo?
 
 Funciona nos dois. O WinDivert lê os pacotes antes da pilha TCP do
-Windows, então o adaptador físico não importa.
+Windows, então o adaptador físico não importa. O dropdown de placa de
+rede só restringe a captura à interface escolhida (caso você tenha
+mais de uma).
 
 ### 5. O programa deixa minha conexão mais lenta?
 
@@ -117,26 +119,39 @@ Foi feito para o **latamRO** (gnjoylatam). As portas de filtro e os
 opcodes dos decodificadores são específicos do latamRO; outros
 servidores precisariam de ajustes.
 
-### 9. O que significa "Travar" / "Destravar" um overlay?
+### 9. Como faço pra esconder ou mostrar um overlay durante o jogo?
 
-- **Destravado**: você pode arrastar o overlay com o mouse de qualquer
-  parte dele e redimensionar pelo canto.
-- **Travado**: o overlay vira *click-through* — os cliques passam por
-  ele direto para o cliente do RO embaixo, como se a janela não
-  estivesse ali. Use isso depois de posicionar tudo, pra não atrapalhar
-  o jogo.
+Cada addon tem um atalho global configurável — pressionar a combinação
+em qualquer janela (incluindo o cliente do RO) alterna a visibilidade
+do overlay. Para o Medidor de Experiência o padrão é `Alt+Shift+E`. Você
+pode trocar a combinação clicando em **Configurar** ao lado do addon
+em Raglens.
 
-O botão "Travar overlays" / "Destravar overlays" trava ou destrava todos
-ao mesmo tempo; cada addon também tem seu próprio botão de
-travar/destravar.
+A janela principal de Raglens também tem dois toggles por addon:
 
-### 10. Por que aparecem várias conexões no painel "Conexões detectadas"?
+- **Sempre visível**: por padrão o overlay só aparece quando o Ragexe
+  associado (ou o próprio Raglens) está em foco. Marque pra deixar o
+  overlay visível mesmo quando você alt-tabar para outro programa.
+- **Travado**: quando marcado, o overlay vira *click-through* — os
+  cliques passam por ele direto para o cliente do RO embaixo, como se a
+  janela não estivesse ali. Use depois de posicionar tudo, pra não
+  atrapalhar o jogo. Desmarque pra arrastar de novo.
+
+### 10. Por que aparecem várias conexões no painel "Clientes detectados"?
 
 O latamRO permite multi-cliente, então uma sessão de captura pode ver
-mais de um fluxo cliente-servidor ao mesmo tempo (e você só quer um). A
-lista mostra cada conexão única observada; clique em uma para o Raglens
-processar só o tráfego daquele cliente. "Seguir todas" volta ao
-comportamento padrão de não filtrar.
+mais de um cliente rodando ao mesmo tempo (e você só quer um). A lista
+mostra cada cliente único observado, identificado pelo PID do `Ragexe.exe`.
+
+Conforme o Raglens decodifica os pacotes de identidade (`0x0283`
+ZC_AID, `0x0a30` ZC_ACK_REQNAME_TITLE), ele aprende o **ID da conta** e
+o **nome do personagem** associados àquele PID e atualiza a linha para
+algo como "Tucano · AID 1031076 · PID 15916". Antes disso, a linha
+mostra só o PID, o nome do processo e a hora de abertura.
+
+Clique no cliente que você quer seguir; o Raglens passa a processar só
+os pacotes daquele cliente. "Seguir todas" volta ao comportamento
+padrão de não filtrar.
 
 ### 11. Funciona se eu já tenho o Wireshark/Npcap instalado?
 
@@ -158,7 +173,7 @@ Veja `src-tauri/src/decoders/README.md` para o contrato exato.
 
 ### 13. Como descubro o opcode certo de um pacote desconhecido?
 
-Roda o Raglens com a variável de ambiente `RAGLENS_LOG_OPCODES=1`:
+Rode o Raglens com a variável de ambiente `RAGLENS_LOG_OPCODES=1`:
 
 ```powershell
 $env:RAGLENS_LOG_OPCODES = "1"
@@ -168,7 +183,9 @@ npm run tauri dev
 Cada pacote observado vai pra
 `%LOCALAPPDATA%\com.adson.raglens\logs\opcodes-YYYY-MM-DD.log`. Mate um
 monstro (ou faça a ação que você quer mapear), dá `Get-Content -Tail
-50` no log, e o opcode novo aparece no fim.
+50` no log, e o opcode novo aparece no fim. O dispatcher decompõe cada
+segmento TCP em pacotes individuais antes de gravar, então a linha de
+log mostra um opcode por evento real, não por segmento bruto.
 
 ### 14. Por que o programa não vê meus pacotes mesmo como Administrador?
 
@@ -187,11 +204,16 @@ Causas possíveis, em ordem de probabilidade:
 
 - **Tauri 2** — produz um `.exe` standalone (~10-15 MB)
 - **Rust** (backend) — captura via WinDivert (modo *sniff*), dispatcher
-  por opcode, registro modular de decodificadores
+  por opcode com walker de segmento TCP, registro modular de
+  decodificadores, watcher de foreground (Win32), identificação de PID
+  por 4-tupla (`GetExtendedTcpTable`)
 - **React + TypeScript + Vite** (frontend) — bundle único, mesma URL
   servindo janela principal e overlays via parâmetro `?w=`
 - **tauri-plugin-store** — persiste posição/tamanho dos overlays,
-  estado travado/destravado e addons habilitados
+  estados de cada addon (travado, sempre visível) e configuração
+  específica (janela de tempo, linhas visíveis, atalho)
+- **tauri-plugin-global-shortcut** — atalho de teclado por addon
+  registrado em todo o sistema, mesmo com o jogo em foco
 
 ## Pré-requisitos (para construir)
 
@@ -242,13 +264,20 @@ Saída em `src-tauri/target/release/bundle/nsis/*-setup.exe`.
 1. Abra como Administrador.
 2. Escolha a interface de rede ativa no dropdown.
 3. Clique em **Iniciar Captura**.
-4. No painel **Conexões detectadas**, clique no cliente que você quer
-   seguir (ou deixe em "Seguir todas").
+4. No painel **Clientes detectados**, clique no cliente que você quer
+   seguir. As linhas começam mostrando só o PID, depois preenchem AID e
+   nome do personagem conforme o Raglens decodifica os pacotes de
+   identidade.
 5. Ative o addon desejado pelo switch — o overlay aparece na posição
-   padrão.
-6. Arraste / redimensione o overlay até onde quiser.
-7. Clique em **Travar overlays** quando estiver satisfeito; o overlay
-   vira click-through e não atrapalha mais o jogo.
+   padrão e binda automaticamente ao cliente selecionado.
+6. Arraste/redimensione o overlay até onde quiser.
+7. Marque **Travado** quando estiver satisfeito; o overlay vira
+   click-through e não atrapalha mais o jogo.
+8. Pressione o atalho do addon (`Alt+Shift+E` no caso do XP meter) pra
+   mostrar/esconder em qualquer momento, mesmo com o jogo em foco.
+9. Clique em **Configurar** ao lado do addon pra abrir o modal de
+   configuração — atalho de teclado, janela de tempo (para o XP meter),
+   linhas exibidas, etc.
 
 ## Estrutura do projeto
 
@@ -257,34 +286,45 @@ raglens/
 ├── src/                       Frontend React/TS
 │   ├── main.tsx               Roteamento por ?w= (main vs overlay)
 │   ├── routes/
-│   │   ├── MainWindow.tsx
-│   │   └── OverlayHost.tsx    Shell glassmorphism que monta o addon
+│   │   ├── MainWindow.tsx     Painel de controle
+│   │   └── OverlayHost.tsx    Shell de overlay; monta o addon
 │   ├── addons/
 │   │   ├── types.ts
 │   │   ├── registry.ts        ADDONS = [xpMeterManifest]
 │   │   └── xp-meter/
 │   │       ├── manifest.ts
+│   │       ├── config.ts      Tipos e defaults da config do addon
 │   │       ├── XpMeter.tsx
-│   │       ├── useXpEvents.ts Inscrito em `packet:exp-gain`
-│   │       └── format.ts      Vitest cobre XP/min, ETA, formatação
-│   ├── components/            NicPicker, ConnectionPicker, AddonRow
-│   ├── hooks/                 useCaptureSession, useConnections, useAddonState
-│   ├── lib/                   invoke / events / store / overlays wrappers
+│   │       ├── XpMeterSettings.tsx  Conteúdo do modal Configurar
+│   │       ├── useXpEvents.ts Inscrito em packet:exp-gain / exp-totals
+│   │       └── format.ts      Vitest cobre xpPerMinute, ETA, formatação
+│   ├── components/            NicPicker, ClientPicker, AddonRow,
+│   │                          AddonSettingsModal
+│   ├── hooks/                 useCaptureSession, useClients,
+│   │                          useSelectedPid, useAddonState,
+│   │                          useAddonShortcuts, useAddonConfig,
+│   │                          useDraggableWindow
+│   ├── lib/                   invoke / events / store / overlays / types
 │   ├── i18n/pt-br.ts          Strings centralizadas
 │   └── styles/                main.css, overlay.css
 ├── src-tauri/                 Backend Rust
 │   ├── src/
 │   │   ├── main.rs
-│   │   ├── lib.rs             Registro de comandos / plugins
+│   │   ├── lib.rs             Registro de comandos / plugins / RunEvent
 │   │   ├── capture.rs         Loop WinDivert + canonicalização 4-tupla
 │   │   ├── packet.rs          Parsing IPv4 + TCP
 │   │   ├── interfaces.rs      Enumeração de NICs (GetAdaptersAddresses)
-│   │   ├── connections.rs     Rastreio multi-cliente + comandos de seleção
-│   │   ├── dispatch.rs        Opcode (u16 LE) → decodificador → evento tipado
-│   │   ├── logger.rs          Logger dev de opcodes (RAGLENS_LOG_OPCODES=1)
+│   │   ├── connections.rs     Rastreio multi-cliente + comandos
+│   │   ├── process.rs         PID via GetExtendedTcpTable, info do .exe
+│   │   ├── foreground.rs      Watcher de foreground (poll 150 ms)
+│   │   ├── dispatch.rs        Walker de segmento + lookup de decoder
+│   │   ├── logger.rs          Logger dev de opcodes
 │   │   └── decoders/
 │   │       ├── mod.rs         lookup(opcode) -> Option<DecoderFn>
-│   │       └── README.md      Contrato pra novos decodificadores
+│   │       ├── aid.rs         ZC_AID (0x0283)
+│   │       ├── char_name.rs   ZC_ACK_REQNAME_TITLE (0x0a30)
+│   │       ├── exp_gain.rs    ZC_NOTIFY_EXP (0x0acc)
+│   │       └── exp_totals.rs  ZC_LONGPAR_CHANGE (0x0acb)
 │   ├── resources/x64/         WinDivert.dll / .sys / .lib
 │   ├── capabilities/default.json
 │   ├── build.rs               Manifesto admin + Common-Controls v6
@@ -302,19 +342,29 @@ cargo test --manifest-path src-tauri/Cargo.toml     # decodificadores
 
 O Vitest cobre as funções puras de cálculo de XP/min, %/min, ETA e
 formatação no `src/addons/xp-meter/format.ts`. O `cargo test` cobre o
-parsing IPv4/TCP e o registro de decodificadores (que começa vazio).
+parsing IPv4/TCP, o walker do dispatcher (com burst de pacotes
+concatenados num único segmento), os decoders de EXP e AID/nome, e
+o registro de decodificadores.
 
 ## Contrato de captura (resumo)
 
-- Filtro WinDivert (no `capture.rs`):
-  `tcp.SrcPort == 6900 || tcp.DstPort == 6900 || ... 6951 ... 4500 ||
-  (22000–22100)` — portas do servidor de mapa do latamRO.
-- Cada segmento matched é canonicalizado para um `FourTuple { client_ip,
-  client_port, server_ip, server_port }`. O lado "server" é o que tem
-  uma porta da lista acima.
-- O `dispatch_packet` lê o opcode (2 bytes LE) e, se houver um
-  decodificador registrado em `decoders::lookup`, emite o evento
-  `packet:<event-name>` com payload tipado (serde).
+- Filtro WinDivert (em `capture.rs`): combina o IP da placa selecionada
+  (`ip.SrcAddr == X || ip.DstAddr == X`) com as portas do servidor de
+  mapa do latamRO (`6900 / 6951 / 4500 / 22000–22100`).
+- Cada segmento TCP matched é canonicalizado para um `FourTuple
+  { client_ip, client_port, server_ip, server_port }`. O lado "server"
+  é o que tem uma porta da lista acima; o "client" é o ephemeral.
+- O PID dono da 4-tupla é resolvido via `GetExtendedTcpTable` no
+  momento em que a conexão é observada pela primeira vez, e cacheado.
+- O `dispatch_packet` percorre o payload do segmento, fatiando um
+  pacote Ragnarok por iteração — opcodes de tamanho fixo via tabela
+  (`fixed_packet_length`), variáveis lendo o campo de length em offset
+  2-3. Pra cada opcode encontrado, se houver decodificador registrado
+  em `decoders::lookup`, ele emite um evento Tauri tipado
+  (`packet:<event-name>`) com payload serde.
+- O addon assina o evento na frontend via `@tauri-apps/api/event` e
+  reage. O Raglens propaga o PID dono em cada payload pra cada overlay
+  filtrar por seu cliente bindado.
 - Se nenhum decodificador estiver registrado, o opcode logger (se
   habilitado por env var) ainda grava a linha — é assim que opcodes
   novos são descobertos.
