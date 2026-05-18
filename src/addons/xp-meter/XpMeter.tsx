@@ -94,9 +94,7 @@ export function XpMeter({ pid, client: _client }: Props) {
   return (
     <div className="xp-meter">
       {!hasEverReceived && (
-        <div className="xp-meter__waiting">
-          Aguardando primeiro pacote de experiência…
-        </div>
+        <div className="xp-meter__waiting">Aguardando pacotes…</div>
       )}
       <dl className="xp-meter__rows">
         {config.showBaseRate && (

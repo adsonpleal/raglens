@@ -24,6 +24,9 @@
   color: #ffb070;
   font-style: italic;
   margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .xp-meter__rows {
