@@ -58,6 +58,13 @@ export async function spawnAddonOverlay(
     alwaysOnTop: true,
     decorations: false,
     transparent: true,
+    // Explicitly clear the webview's own background paint. `transparent`
+    // on the window enables per-pixel alpha, but Tauri 2 / WebView2 will
+    // still paint an opaque default-coloured background unless we say
+    // otherwise. Setting RGBA = [0,0,0,0] makes the webview itself
+    // transparent and lets the body's `background: transparent` actually
+    // show through.
+    backgroundColor: [0, 0, 0, 0],
     skipTaskbar: true,
     resizable: true,
     visible: false, // OverlayHost shows itself once foreground state is known

@@ -24,8 +24,5 @@ body,
 .overlay-body {
   flex: 1;
   padding: 3px 5px;
-  /* Near-zero alpha so the entire window area is "visible" enough to
-   * the OS to receive pointer events (the JS-driven drag needs to grab
-   * empty space, not just the text). Practically invisible to the eye. */
-  background: rgba(0, 0, 0, 0.01);
+  background: transparent;
 }
