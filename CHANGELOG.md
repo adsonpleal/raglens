@@ -7,6 +7,45 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-18
+
+### Adicionado
+
+- Configuração de aparência por overlay no modal "Configurar":
+  paleta de cor de fundo (Transparente / Escuro / Claro / Azul
+  escuro / Verde escuro) e slider de opacidade. O preset "Claro"
+  usa um tom azul-acinzentado discreto inspirado no HUD do
+  Ragnarok (em vez de branco puro) e desliga o contorno preto do
+  texto pra ficar parecido com o estilo do cliente. Persistido em
+  `overlay.<id>.appearance` no `raglens.json`; mudanças aparecem
+  ao vivo no overlay enquanto o usuário arrasta o slider, com
+  gravação em disco com debounce de 300 ms.
+- Janela do overlay agora trava a altura no tamanho natural do
+  conteúdo via `setMinSize`/`setMaxSize` iguais, recalculado por
+  `ResizeObserver` em cima de `.overlay-shell`. O usuário pode
+  redimensionar horizontalmente; verticalmente o SO bloqueia.
+  Quando o usuário liga/desliga linhas do XP meter, a janela
+  ajusta automaticamente.
+- Fonte do overlay alinhada com o HUD do Ragnarok: pilha de
+  fallback `Gulim, GulimChe, Dotum, Tahoma, "Lucida Sans Unicode"`
+  em `bold` no `.xp-meter`.
+
+### Corrigido
+
+- Transparência real da janela do overlay agora funciona no
+  Windows 11 + WebView2. Duas correções combinadas:
+  1. `main.css` carregava `html, body, #root { background: #14141a }`
+     pra todas as janelas (importado no entrypoint compartilhado
+     `main.tsx`), o que pintava um fundo opaco escuro no overlay
+     antes do `overlay.css` poder dizer "transparente". A pintura
+     escura foi movida pra `.app`, que só existe na MainWindow.
+  2. Após `tauri://created`, o spawn faz um "resize nudge"
+     (`w+1` → `w`) — Tauri 2 + WebView2 só ativam a composição
+     transparente após o primeiro resize
+     ([SO #77344488](https://stackoverflow.com/questions/77344488)).
+- `transparent: true` + `shadow: false` reativados no spawn das
+  janelas de overlay (`overlays.ts`).
+
 ## [0.1.3] - 2026-05-18
 
 ### Adicionado
@@ -201,7 +240,8 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/adsonpleal/raglens/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/adsonpleal/raglens/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/adsonpleal/raglens/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/adsonpleal/raglens/compare/v0.1.0...v0.1.1

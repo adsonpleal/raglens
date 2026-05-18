@@ -34,4 +34,16 @@ export const t = {
     available: "Nova versão disponível: {version}. Clique para baixar.",
     dismiss: "Dispensar",
   },
+  appearance: {
+    title: "Aparência",
+    preset: "Cor de fundo",
+    opacity: "Opacidade",
+    presets: {
+      transparent: "Transparente",
+      dark: "Escuro",
+      light: "Claro",
+      darkBlue: "Azul escuro",
+      darkGreen: "Verde escuro",
+    },
+  },
 };

@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { getAddon } from "../addons/registry";
 import { XpMeterSettings } from "../addons/xp-meter/XpMeterSettings";
+import { AppearanceSection } from "./AppearanceSection";
 
 type Props = {
   addonId: string | null;
@@ -50,6 +51,8 @@ export function AddonSettingsModal({
           defaultShortcut={manifest.defaultShortcut}
           onSave={onSaveShortcut}
         />
+
+        <AppearanceSection addonId={addonId} />
 
         {addonId === "xp-meter" && <XpMeterSettings />}
       </div>

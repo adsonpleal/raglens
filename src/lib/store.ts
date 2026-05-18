@@ -7,6 +7,7 @@
 // Tauri app config dir. Keys are namespaced flatly with dots.
 
 import { LazyStore } from "@tauri-apps/plugin-store";
+import { DEFAULT_APPEARANCE, type OverlayAppearance } from "./appearance";
 
 const store = new LazyStore("raglens.json");
 
@@ -64,6 +65,23 @@ export async function setOverlayUserHidden(
   value: boolean,
 ): Promise<void> {
   await store.set(`overlay.${addonId}.userHidden`, value);
+  await store.save();
+}
+
+export async function getOverlayAppearance(
+  addonId: string,
+): Promise<OverlayAppearance> {
+  const stored = await store.get<Partial<OverlayAppearance>>(
+    `overlay.${addonId}.appearance`,
+  );
+  return { ...DEFAULT_APPEARANCE, ...(stored ?? {}) };
+}
+
+export async function setOverlayAppearance(
+  addonId: string,
+  appearance: OverlayAppearance,
+): Promise<void> {
+  await store.set(`overlay.${addonId}.appearance`, appearance);
   await store.save();
 }
 

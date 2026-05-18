@@ -9,6 +9,7 @@
 // only responsible for spawning, closing, lock-state, and bounds
 // persistence.
 
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import {
   WebviewWindow,
   getAllWebviewWindows,
@@ -59,6 +60,8 @@ export async function spawnAddonOverlay(
     decorations: false,
     skipTaskbar: true,
     resizable: true,
+    transparent: true,
+    shadow: false,
     visible: false, // OverlayHost shows itself once foreground state is known
   });
 
@@ -67,6 +70,20 @@ export async function spawnAddonOverlay(
       await w.setIgnoreCursorEvents(true);
     }
     bindBoundsPersistence(w, manifest.id);
+    // WebView2 + Tauri 2 transparency only kicks in after the first
+    // resize — without this nudge the window stays painted with its
+    // pre-composition opaque backing.
+    // https://stackoverflow.com/questions/77344488
+    try {
+      const size = await w.outerSize();
+      const scale = await w.scaleFactor();
+      const w1 = Math.round(size.width / scale);
+      const h1 = Math.round(size.height / scale);
+      await w.setSize(new LogicalSize(w1 + 1, h1));
+      await w.setSize(new LogicalSize(w1, h1));
+    } catch (e) {
+      console.warn(`[overlay] transparency nudge failed for ${manifest.id}:`, e);
+    }
   });
   w.once("tauri://error", (e) => {
     console.error(`[overlay] failed to create ${label}:`, e);

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
 import { getAddon } from "../addons/registry";
 import { useDraggableWindow } from "../hooks/useDraggableWindow";
+import { useOverlayAppearance } from "../hooks/useOverlayAppearance";
 import { useSelectedPid } from "../hooks/useSelectedPid";
 import {
   onClientUpdated,
@@ -15,6 +17,7 @@ import {
   getOverlayAlwaysVisible,
   getOverlayUserHidden,
 } from "../lib/store";
+import { appearanceCssVars } from "../lib/appearance";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
 
@@ -36,6 +39,7 @@ export function OverlayHost({ addonId }: Props) {
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [alwaysVisible, setAlwaysVisible] = useState(false);
   const [userHidden, setUserHidden] = useState(false);
+  const appearance = useOverlayAppearance(addonId);
   const shellRef = useRef<HTMLDivElement>(null);
 
   // Drag the window from JS so Windows Aero Snap never sees a real
@@ -114,6 +118,56 @@ export function OverlayHost({ addonId }: Props) {
     };
   }, [selectedPid]);
 
+  // Lock the window's height to its content. The user can resize
+  // horizontally; vertical resize is blocked by setting min/max
+  // height to the same value (the OS enforces the constraint).
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+
+    let cancelled = false;
+    let inFlight = false;
+    let lastLockedHeight = 0;
+    const w = getCurrentWebviewWindow();
+
+    const lock = async (height: number) => {
+      if (cancelled || height <= 0 || height === lastLockedHeight) return;
+      lastLockedHeight = height;
+      try {
+        await w.setMinSize(new LogicalSize(80, height));
+        await w.setMaxSize(new LogicalSize(4096, height));
+        const outer = await w.outerSize();
+        const scale = await w.scaleFactor();
+        const curW = Math.round(outer.width / scale);
+        const curH = Math.round(outer.height / scale);
+        if (curH !== height) {
+          await w.setSize(new LogicalSize(curW, height));
+        }
+      } catch (e) {
+        console.warn("[overlay] height lock failed:", e);
+      }
+    };
+
+    const observer = new ResizeObserver((entries) => {
+      if (inFlight) return;
+      const entry = entries[0];
+      if (!entry) return;
+      const h = Math.ceil(
+        entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height,
+      );
+      inFlight = true;
+      void lock(h).finally(() => {
+        inFlight = false;
+      });
+    });
+    observer.observe(el);
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, [addonId]);
+
   // Visibility:
   //  - userHidden (toggled via global shortcut) → hidden, full stop.
   //  - No client selected → hidden.
@@ -166,10 +220,14 @@ export function OverlayHost({ addonId }: Props) {
     };
   }, [selectedPid, alwaysVisible, userHidden]);
 
+  const bodyStyle = appearanceCssVars(appearance) as React.CSSProperties;
+
   if (!manifest || !Component) {
     return (
       <div className="overlay-shell" ref={shellRef}>
-        <div className="overlay-body">Addon não encontrado: {addonId}</div>
+        <div className="overlay-body" style={bodyStyle}>
+          Addon não encontrado: {addonId}
+        </div>
       </div>
     );
   }
@@ -183,7 +241,7 @@ export function OverlayHost({ addonId }: Props) {
 
   return (
     <div className="overlay-shell" ref={shellRef}>
-      <div className="overlay-body">
+      <div className="overlay-body" style={bodyStyle}>
         <Component pid={selectedPid} client={client} />
       </div>
     </div>

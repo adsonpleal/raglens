@@ -1,4 +1,5 @@
 import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
+import type { OverlayAppearance } from "./appearance";
 import type {
   CaptureStats,
   ClientDetected,
@@ -61,6 +62,9 @@ export type OverlayConfigChanged = {
    *  via `getAddonConfig` rather than receiving it in the payload —
    *  shape is per-addon. */
   addon_config_changed?: boolean;
+  /** New per-overlay appearance. Sent inline so consumers don't need
+   *  a second store read. */
+  appearance?: OverlayAppearance;
 };
 
 export function emitOverlayConfigChanged(

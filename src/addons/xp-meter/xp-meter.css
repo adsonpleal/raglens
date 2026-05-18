@@ -8,17 +8,24 @@
   flex-direction: column;
   gap: 1px;
   width: 100%;
-  height: 100%;
-  /* 8-direction outline so the text reads against any RO background. */
+  /* Match Ragnarok's HUD: Gulim is the font shipped with the classic
+   * Korean client and used by every modern fork (latamRO included)
+   * for Latin text. Falls back to Tahoma where Gulim isn't installed.
+   * Bold weight gives the blocky look RO labels have. */
+  font-family: "Gulim", "GulimChe", "Dotum", Tahoma, "Lucida Sans Unicode", sans-serif;
+  font-weight: bold;
+  /* 8-direction outline so the text reads against any RO background.
+   * Per-preset color via CSS var: dark/colored presets use black for
+   * contrast; light preset sets it transparent (clean RO HUD look). */
   text-shadow:
-    1px 0 0 #000,
-    -1px 0 0 #000,
-    0 1px 0 #000,
-    0 -1px 0 #000,
-    1px 1px 0 #000,
-    -1px 1px 0 #000,
-    1px -1px 0 #000,
-    -1px -1px 0 #000;
+    1px 0 0 var(--overlay-outline, #000),
+    -1px 0 0 var(--overlay-outline, #000),
+    0 1px 0 var(--overlay-outline, #000),
+    0 -1px 0 var(--overlay-outline, #000),
+    1px 1px 0 var(--overlay-outline, #000),
+    -1px 1px 0 var(--overlay-outline, #000),
+    1px -1px 0 var(--overlay-outline, #000),
+    -1px -1px 0 var(--overlay-outline, #000);
 }
 
 .xp-meter__rows {
@@ -45,12 +52,11 @@
 }
 
 .xp-meter__rows dt {
-  color: #d8d8d8;
-  font-weight: normal;
+  color: var(--overlay-fg-muted, #d8d8d8);
 }
 
 .xp-meter__rows dd {
   margin: 0;
-  color: #ffffff;
+  color: var(--overlay-fg, #ffffff);
   text-align: right;
 }
