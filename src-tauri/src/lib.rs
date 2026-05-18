@@ -34,6 +34,11 @@ fn stop_capture(state: State<CaptureState>) -> Result<(), String> {
     capture::stop_capture(state)
 }
 
+#[tauri::command]
+fn raglens_pid() -> u32 {
+    std::process::id()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -58,6 +63,7 @@ pub fn run() {
             connections::select_client,
             connections::clear_client_selection,
             foreground::get_foreground_pid,
+            raglens_pid,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

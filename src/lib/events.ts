@@ -3,6 +3,9 @@ import type {
   CaptureStats,
   ClientDetected,
   ClientUpdate,
+  ExpGain,
+  ExpTotalUpdate,
+  ForegroundChanged,
 } from "./types";
 
 export function onCaptureStarted(handler: () => void): Promise<UnlistenFn> {
@@ -31,4 +34,20 @@ export function onClientUpdated(
   handler: (update: ClientUpdate) => void,
 ): Promise<UnlistenFn> {
   return listen<ClientUpdate>("client-updated", (e) => handler(e.payload));
+}
+
+export function onForegroundChanged(
+  handler: (event: ForegroundChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<ForegroundChanged>("foreground-changed", (e) => handler(e.payload));
+}
+
+export function onExpGain(handler: (gain: ExpGain) => void): Promise<UnlistenFn> {
+  return listen<ExpGain>("packet:exp-gain", (e) => handler(e.payload));
+}
+
+export function onExpTotal(
+  handler: (update: ExpTotalUpdate) => void,
+): Promise<UnlistenFn> {
+  return listen<ExpTotalUpdate>("packet:exp-totals", (e) => handler(e.payload));
 }

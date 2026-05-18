@@ -24,3 +24,11 @@ export function selectClient(pid: number): Promise<void> {
 export function clearClientSelection(): Promise<void> {
   return invoke("clear_client_selection");
 }
+
+export function getForegroundPid(): Promise<number | null> {
+  return invoke("get_foreground_pid");
+}
+
+export function raglensPid(): Promise<number> {
+  return invoke("raglens_pid");
+}

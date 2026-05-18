@@ -29,7 +29,7 @@ export function MainWindow() {
     lockAll,
     unlockAll,
     allLocked,
-  } = useAddonState();
+  } = useAddonState(clients);
 
   const statusKey = isRecording ? "recording" : "idle";
   const statsLine = t.capture.statsTemplate

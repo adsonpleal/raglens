@@ -26,21 +26,42 @@ export type ClientInfo = {
   first_seen_unix_ms: number;
 };
 
-/** Emitted when a new TCP 4-tuple is observed. Carries the resolved
- *  owning PID (if any) so the frontend can know which client picked
- *  up another connection. */
 export type ClientDetected = {
   four_tuple: FourTuple;
   pid: number | null;
 };
 
-/** Emitted when a client's identity (AID / name) becomes known via
- *  decoded ZC_AID or ZC_ACK_REQNAME_TITLE packets. Either field may be
- *  populated; both being null means no change worth surfacing. */
 export type ClientUpdate = {
   pid: number | null;
   aid: number | null;
   name: string | null;
+};
+
+export type ForegroundChanged = {
+  pid: number | null;
+};
+
+export type ExpKind = "base" | "job";
+
+export type ExpGain = {
+  pid: number | null;
+  aid: number;
+  delta: number;
+  kind: ExpKind;
+  from_quest: boolean;
+};
+
+export type ExpField =
+  | "base-exp"
+  | "job-exp"
+  | "next-base-exp"
+  | "next-job-exp";
+
+export type ExpTotalUpdate = {
+  pid: number | null;
+  aid: number | null;
+  field: ExpField;
+  value: number;
 };
 
 export type CaptureStats = {

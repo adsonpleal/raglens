@@ -7,10 +7,12 @@ import "./styles/main.css";
 const params = new URLSearchParams(window.location.search);
 const w = params.get("w");
 const addonId = params.get("addon");
+const pidStr = params.get("pid");
+const pid = pidStr ? parseInt(pidStr, 10) : NaN;
 
 function Root() {
-  if (w === "overlay" && addonId) {
-    return <OverlayHost addonId={addonId} />;
+  if (w === "overlay" && addonId && Number.isFinite(pid)) {
+    return <OverlayHost addonId={addonId} pid={pid} />;
   }
   return <MainWindow />;
 }
