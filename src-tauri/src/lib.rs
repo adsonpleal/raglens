@@ -69,17 +69,30 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
+        .run(|app_handle, event| match event {
+            // Closing the main window exits the app entirely. Without
+            // this, overlay windows would keep the process alive
+            // (some are hidden by the foreground watcher so the user
+            // sees nothing while the app silently runs in the
+            // background).
+            tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { .. },
+                ..
+            } if label == "main" => {
+                app_handle.exit(0);
+            }
             // Tear down the background threads on app exit. Without
             // this, the capture thread sits blocked in WinDivertRecv
             // and the foreground watcher keeps polling, both firing
             // emits at an event bus that's tearing down underneath
             // them. WinDivertShutdown unblocks recv; the watcher's
             // running flag exits the poll loop on its next tick.
-            if let tauri::RunEvent::Exit = event {
+            tauri::RunEvent::Exit => {
                 let capture_state = app_handle.state::<capture::CaptureState>();
                 capture::shutdown_capture(capture_state.inner());
                 app_handle.state::<ForegroundWatcherState>().stop();
             }
+            _ => {}
         });
 }

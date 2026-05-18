@@ -7,6 +7,27 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-18
+
+### Corrigido
+
+- Fechar a janela principal agora encerra o app completamente.
+  Antes, os overlays continuavam abertos (alguns invisíveis pelo
+  watcher de foreground) e o processo `raglens.exe` ficava rodando
+  silenciosamente em segundo plano. Hook adicionado em
+  `RunEvent::WindowEvent { CloseRequested }` do `lib.rs`: ao
+  receber o evento da janela `main`, o app chama
+  `AppHandle::exit(0)`, que dispara o `RunEvent::Exit` existente
+  pra fechar capture loop, foreground watcher e overlays.
+
+### Mudado
+
+- Mensagem do placeholder do XP meter encurtada de
+  "Aguardando primeiro pacote de experiência…" para
+  "Aguardando pacotes…". Adicionado `white-space: nowrap` +
+  `text-overflow: ellipsis` no estilo da linha como rede de
+  segurança caso alguém deixe o overlay muito estreito.
+
 ## [0.1.0] - 2026-05-18
 
 ### Adicionado
@@ -147,5 +168,6 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/adsonpleal/raglens/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/adsonpleal/raglens/releases/tag/v0.1.0
