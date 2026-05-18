@@ -48,11 +48,6 @@ export async function spawnAddonOverlay(
   };
   const locked = await getOverlayLocked(manifest.id);
 
-  // `backgroundColor` as a spawn option only configures the OS window
-  // background, not the webview's own paint — leaving it off here, and
-  // OverlayHost calls `getCurrentWebview().setBackgroundColor(null)` at
-  // mount time to clear the webview paint so `background: transparent`
-  // in CSS actually shows through.
   const w = new WebviewWindow(label, {
     url: `/?w=overlay&addon=${encodeURIComponent(manifest.id)}`,
     title: manifest.name,
@@ -62,12 +57,6 @@ export async function spawnAddonOverlay(
     y: bounds.y,
     alwaysOnTop: true,
     decorations: false,
-    transparent: true,
-    // Without shadow:false, DWM draws a drop-shadow around the window
-    // frame, and on transparent borderless windows that shadow ends up
-    // filling the entire window rect with a dark halo. Tauri's own
-    // docs flag this as a known interaction (tao#72).
-    shadow: false,
     skipTaskbar: true,
     resizable: true,
     visible: false, // OverlayHost shows itself once foreground state is known

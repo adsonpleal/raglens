@@ -36,7 +36,3 @@ export function getForegroundPid(): Promise<number | null> {
 export function raglensPid(): Promise<number> {
   return invoke("raglens_pid");
 }
-
-export function enableOverlayTransparency(label: string): Promise<void> {
-  return invoke("enable_overlay_transparency", { label });
-}

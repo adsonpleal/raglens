@@ -7,7 +7,6 @@ mod interfaces;
 mod logger;
 mod packet;
 mod process;
-mod transparency;
 
 use capture::CaptureState;
 use connections::ConnectionsState;
@@ -66,7 +65,6 @@ pub fn run() {
             connections::get_selected_pid,
             foreground::get_foreground_pid,
             raglens_pid,
-            transparency::enable_overlay_transparency,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

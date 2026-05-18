@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
@@ -11,12 +10,7 @@ import {
   onForegroundChanged,
   onOverlayConfigChanged,
 } from "../lib/events";
-import {
-  enableOverlayTransparency,
-  getForegroundPid,
-  listClients,
-  raglensPid,
-} from "../lib/invoke";
+import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
 import { getOverlayAlwaysVisible } from "../lib/store";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
@@ -45,34 +39,6 @@ export function OverlayHost({ addonId }: Props) {
   // edge.
   useDraggableWindow(shellRef);
 
-  // Force true transparency. Tauri 2 + WebView2 on Windows has a
-  // long-standing bug (tauri-apps/tauri #4881 / #8308 / #8632 /
-  // #10318 / #12450) where `transparent: true` + CSS
-  // `background: transparent` + `setBackgroundColor(null)` still
-  // paints an opaque dark surface — even the resize-nudge workaround
-  // that worked for some users doesn't budge it here.
-  //
-  // The reliable fix is to talk to DWM directly:
-  // `SetWindowCompositionAttribute` with `ACCENT_ENABLE_TRANSPARENT-
-  // GRADIENT` and a zero gradient colour. This is what
-  // window-vibrancy / File Explorer / Edge all do internally.
-  // Implementation is in `src-tauri/src/transparency.rs`; we call
-  // through a Tauri command with the overlay's label.
-  useEffect(() => {
-    (async () => {
-      try {
-        await getCurrentWebview().setBackgroundColor(null);
-      } catch (e) {
-        console.warn("[overlay] clear webview bg failed:", e);
-      }
-      try {
-        const w = getCurrentWebviewWindow();
-        await enableOverlayTransparency(w.label);
-      } catch (e) {
-        console.warn("[overlay] dwm transparency failed:", e);
-      }
-    })();
-  }, []);
 
   // Hydrate the per-addon alwaysVisible flag from the store on mount,
   // then keep it in sync with `overlay-config-changed` events emitted
