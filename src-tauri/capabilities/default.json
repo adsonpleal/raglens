@@ -18,6 +18,10 @@
     "core:app:default",
     "opener:default",
     "store:default",
+    "global-shortcut:default",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered",
     {
       "identifier": "opener:allow-open-url",
       "allow": [{ "url": "https://github.com/**" }]

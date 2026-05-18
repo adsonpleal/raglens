@@ -1,6 +1,7 @@
 import { AddonRow } from "../components/AddonRow";
 import { ClientPicker } from "../components/ClientPicker";
 import { NicPicker } from "../components/NicPicker";
+import { useAddonShortcuts } from "../hooks/useAddonShortcuts";
 import { useAddonState } from "../hooks/useAddonState";
 import { useCaptureSession } from "../hooks/useCaptureSession";
 import { useClients } from "../hooks/useClients";
@@ -25,6 +26,7 @@ export function MainWindow() {
     enabled,
     locked,
     alwaysVisible,
+    shortcuts,
     toggle,
     setOneLocked,
     setOneAlwaysVisible,
@@ -32,6 +34,11 @@ export function MainWindow() {
     unlockAll,
     allLocked,
   } = useAddonState();
+
+  // Register process-wide keyboard shortcuts for every enabled
+  // addon that has one configured. The hook handles registering /
+  // unregistering as the map changes.
+  useAddonShortcuts(shortcuts);
 
   const statusKey = isRecording ? "recording" : "idle";
   const statsLine = t.capture.statsTemplate

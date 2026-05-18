@@ -11,7 +11,10 @@ import {
   onOverlayConfigChanged,
 } from "../lib/events";
 import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
-import { getOverlayAlwaysVisible } from "../lib/store";
+import {
+  getOverlayAlwaysVisible,
+  getOverlayUserHidden,
+} from "../lib/store";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
 
@@ -32,6 +35,7 @@ export function OverlayHost({ addonId }: Props) {
   const selectedPid = useSelectedPid();
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [alwaysVisible, setAlwaysVisible] = useState(false);
+  const [userHidden, setUserHidden] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
 
   // Drag the window from JS so Windows Aero Snap never sees a real
@@ -40,24 +44,33 @@ export function OverlayHost({ addonId }: Props) {
   useDraggableWindow(shellRef);
 
 
-  // Hydrate the per-addon alwaysVisible flag from the store on mount,
-  // then keep it in sync with `overlay-config-changed` events emitted
-  // by the main window when the user flips the toggle.
+  // Hydrate the per-addon config flags from the store on mount,
+  // then keep them in sync with `overlay-config-changed` events
+  // emitted by the main window when the user flips a toggle (or the
+  // global shortcut handler flips userHidden).
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
 
-    getOverlayAlwaysVisible(addonId)
-      .then((v) => {
-        if (!cancelled) setAlwaysVisible(v);
+    Promise.all([
+      getOverlayAlwaysVisible(addonId),
+      getOverlayUserHidden(addonId),
+    ])
+      .then(([av, uh]) => {
+        if (cancelled) return;
+        setAlwaysVisible(av);
+        setUserHidden(uh);
       })
-      .catch((e) =>
-        console.warn(`[overlay] getOverlayAlwaysVisible(${addonId}) failed:`, e),
-      );
+      .catch((e) => console.warn(`[overlay] hydrate config(${addonId}) failed:`, e));
 
     onOverlayConfigChanged((evt) => {
-      if (evt.addon_id !== addonId) return;
-      if (!cancelled) setAlwaysVisible(evt.always_visible);
+      if (evt.addon_id !== addonId || cancelled) return;
+      if (typeof evt.always_visible === "boolean") {
+        setAlwaysVisible(evt.always_visible);
+      }
+      if (typeof evt.user_hidden === "boolean") {
+        setUserHidden(evt.user_hidden);
+      }
     }).then((u) => {
       if (cancelled) u();
       else unlisten = u;
@@ -102,13 +115,10 @@ export function OverlayHost({ addonId }: Props) {
   }, [selectedPid]);
 
   // Visibility:
-  //  - No client selected → hidden. Without a selection the overlay
-  //    has nothing to show, so it stays off-screen until the user
-  //    picks one in Raglens.
-  //  - Client selected + alwaysVisible → shown unconditionally.
-  //  - Client selected + auto-foco → shown when that Ragexe is
-  //    foreground, OR raglens itself is foreground (so dragging /
-  //    configuring the overlay keeps it visible).
+  //  - userHidden (toggled via global shortcut) → hidden, full stop.
+  //  - No client selected → hidden.
+  //  - alwaysVisible → shown.
+  //  - else → shown when bound Ragexe or raglens is foreground.
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
@@ -118,7 +128,7 @@ export function OverlayHost({ addonId }: Props) {
       const ownPid = await raglensPid();
       const apply = async (fg: number | null) => {
         if (cancelled) return;
-        if (selectedPid === null) {
+        if (userHidden || selectedPid === null) {
           try {
             await w.hide();
           } catch (e) {
@@ -154,7 +164,7 @@ export function OverlayHost({ addonId }: Props) {
       cancelled = true;
       if (unlisten) unlisten();
     };
-  }, [selectedPid, alwaysVisible]);
+  }, [selectedPid, alwaysVisible, userHidden]);
 
   if (!manifest || !Component) {
     return (

@@ -10,4 +10,5 @@ export const xpMeterManifest: AddonManifest = {
   // thresholds. All four decoders live under src-tauri/src/decoders/.
   requiredOpcodes: [0x0acc, 0x0acb],
   entryRoute: "xp-meter",
+  defaultShortcut: "Alt+Shift+E",
 };

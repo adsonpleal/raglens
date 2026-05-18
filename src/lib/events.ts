@@ -49,12 +49,13 @@ export function onSelectedClientChanged(
   return listen<SelectedClient>("selected-client-changed", (e) => handler(e.payload));
 }
 
-/** Frontend-only event. Main window emits when a per-addon overlay
- *  config setting (e.g. alwaysVisible) flips. Overlay windows
- *  subscribe and react. */
+/** Frontend-only event. Main window emits when any per-addon overlay
+ *  config setting changes. Overlay windows subscribe and re-fetch
+ *  whichever fields they care about from the store. */
 export type OverlayConfigChanged = {
   addon_id: string;
-  always_visible: boolean;
+  always_visible?: boolean;
+  user_hidden?: boolean;
 };
 
 export function emitOverlayConfigChanged(

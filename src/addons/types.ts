@@ -11,4 +11,10 @@ export type AddonManifest = {
    */
   requiredOpcodes: number[];
   entryRoute: string;
+  /**
+   * Default global keyboard shortcut for the show/hide toggle, in
+   * Tauri accelerator syntax (e.g. "Alt+Shift+E"). Per-user override
+   * is persisted under `overlay.<id>.shortcut` in the store.
+   */
+  defaultShortcut?: string;
 };

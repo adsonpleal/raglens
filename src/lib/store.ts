@@ -55,6 +55,36 @@ export async function setOverlayAlwaysVisible(
   await store.save();
 }
 
+export async function getOverlayUserHidden(addonId: string): Promise<boolean> {
+  return (await store.get<boolean>(`overlay.${addonId}.userHidden`)) ?? false;
+}
+
+export async function setOverlayUserHidden(
+  addonId: string,
+  value: boolean,
+): Promise<void> {
+  await store.set(`overlay.${addonId}.userHidden`, value);
+  await store.save();
+}
+
+export async function getOverlayShortcut(
+  addonId: string,
+): Promise<string | null> {
+  return (await store.get<string>(`overlay.${addonId}.shortcut`)) ?? null;
+}
+
+export async function setOverlayShortcut(
+  addonId: string,
+  shortcut: string | null,
+): Promise<void> {
+  if (shortcut === null) {
+    await store.delete(`overlay.${addonId}.shortcut`);
+  } else {
+    await store.set(`overlay.${addonId}.shortcut`, shortcut);
+  }
+  await store.save();
+}
+
 export async function getEnabledAddons(): Promise<string[]> {
   return (await store.get<string[]>("app.enabledAddons")) ?? [];
 }

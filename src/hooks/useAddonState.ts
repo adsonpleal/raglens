@@ -1,7 +1,7 @@
-// Per-addon enable / lock / always-visible state. One overlay per
-// enabled addon; the overlay binds to the currently-selected client
-// at runtime via useSelectedPid (no per-PID overlay multiplexing
-// here).
+// Per-addon state — enable/disable, lock, always-visible, the
+// global shortcut accelerator, and the shortcut-driven userHidden
+// toggle. One overlay window per enabled addon; the overlay binds
+// to the currently-selected client at runtime via useSelectedPid.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ADDONS, getAddon } from "../addons/registry";
@@ -16,8 +16,10 @@ import {
   getEnabledAddons,
   getOverlayAlwaysVisible,
   getOverlayLocked,
+  getOverlayShortcut,
   setEnabledAddons,
   setOverlayAlwaysVisible,
+  setOverlayShortcut,
 } from "../lib/store";
 
 export function useAddonState() {
@@ -26,6 +28,7 @@ export function useAddonState() {
   const [alwaysVisible, setAlwaysVisible] = useState<Map<string, boolean>>(
     new Map(),
   );
+  const [shortcuts, setShortcuts] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -36,15 +39,20 @@ export function useAddonState() {
 
       const l = new Map<string, boolean>();
       const v = new Map<string, boolean>();
+      const s = new Map<string, string>();
       for (const id of valid) {
         l.set(id, await getOverlayLocked(id));
         v.set(id, await getOverlayAlwaysVisible(id));
+        const sc =
+          (await getOverlayShortcut(id)) ?? getAddon(id)?.defaultShortcut;
+        if (sc) s.set(id, sc);
       }
       if (cancelled) return;
 
       setEnabled(new Set(valid));
       setLocked(l);
       setAlwaysVisible(v);
+      setShortcuts(s);
     })();
     return () => {
       cancelled = true;
@@ -65,6 +73,16 @@ export function useAddonState() {
     await setEnabledAddons([...next]);
   }, []);
 
+  const refreshShortcutFor = useCallback(async (id: string) => {
+    const sc = (await getOverlayShortcut(id)) ?? getAddon(id)?.defaultShortcut;
+    setShortcuts((m) => {
+      const nm = new Map(m);
+      if (sc) nm.set(id, sc);
+      else nm.delete(id);
+      return nm;
+    });
+  }, []);
+
   const toggle = useCallback(
     async (manifest: AddonManifest) => {
       const id = manifest.id;
@@ -74,6 +92,11 @@ export function useAddonState() {
           next.delete(id);
           await persistEnabled(next);
           await closeAddonOverlay(id);
+          setShortcuts((m) => {
+            const nm = new Map(m);
+            nm.delete(id);
+            return nm;
+          });
         } else {
           const next = new Set(enabled);
           next.add(id);
@@ -92,12 +115,13 @@ export function useAddonState() {
             nm.set(id, storeAlways);
             return nm;
           });
+          await refreshShortcutFor(id);
         }
       } catch (e) {
         console.error(`[addon] toggle ${id} failed:`, e);
       }
     },
-    [enabled, persistEnabled],
+    [enabled, persistEnabled, refreshShortcutFor],
   );
 
   const setOneLocked = useCallback(async (id: string, value: boolean) => {
@@ -117,14 +141,20 @@ export function useAddonState() {
         nm.set(id, value);
         return nm;
       });
-      // Notify the overlay window so it can flip its visibility logic
-      // without polling the store.
       await emitOverlayConfigChanged({
         addon_id: id,
         always_visible: value,
       });
     },
     [],
+  );
+
+  const setOneShortcut = useCallback(
+    async (id: string, shortcut: string | null) => {
+      await setOverlayShortcut(id, shortcut);
+      await refreshShortcutFor(id);
+    },
+    [refreshShortcutFor],
   );
 
   const lockAll = useCallback(async () => {
@@ -161,9 +191,11 @@ export function useAddonState() {
     enabled,
     locked,
     alwaysVisible,
+    shortcuts,
     toggle,
     setOneLocked,
     setOneAlwaysVisible,
+    setOneShortcut,
     lockAll,
     unlockAll,
     allLocked,
