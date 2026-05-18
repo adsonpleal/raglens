@@ -43,13 +43,27 @@ struct WindowCompositionAttribData {
     size_of_data: usize,
 }
 
+// `SetWindowCompositionAttribute` is not exported in user32.lib at
+// link time — it's only resolvable at runtime via GetProcAddress. So
+// we load it dynamically from user32.dll on first use.
 #[cfg(windows)]
-#[link(name = "user32")]
-extern "system" {
-    fn SetWindowCompositionAttribute(
-        hwnd: *mut core::ffi::c_void,
-        data: *mut WindowCompositionAttribData,
-    ) -> i32;
+type SetWindowCompositionAttributeFn = unsafe extern "system" fn(
+    hwnd: *mut core::ffi::c_void,
+    data: *mut WindowCompositionAttribData,
+) -> i32;
+
+#[cfg(windows)]
+fn resolve_swca() -> Option<SetWindowCompositionAttributeFn> {
+    use windows::core::{s, PCSTR, PCWSTR};
+    use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
+
+    // user32.dll is always already loaded in any GUI process — LoadLibraryW
+    // just bumps the refcount and returns the existing handle.
+    let user32: PCWSTR = windows::core::w!("user32.dll");
+    let handle = unsafe { LoadLibraryW(user32).ok()? };
+    let name: PCSTR = s!("SetWindowCompositionAttribute");
+    let addr = unsafe { GetProcAddress(handle, name)? };
+    Some(unsafe { core::mem::transmute::<_, SetWindowCompositionAttributeFn>(addr) })
 }
 
 #[cfg(windows)]
@@ -84,7 +98,9 @@ fn apply(app: &AppHandle, label: &str) -> Result<(), String> {
         size_of_data: core::mem::size_of::<AccentPolicy>(),
     };
 
-    let rc = unsafe { SetWindowCompositionAttribute(raw_hwnd, &mut data) };
+    let swca = resolve_swca()
+        .ok_or_else(|| "SetWindowCompositionAttribute not found in user32".to_string())?;
+    let rc = unsafe { swca(raw_hwnd, &mut data) };
     if rc != 0 {
         Ok(())
     } else {
