@@ -62,7 +62,7 @@ export function xpMeterRowLabels(
     showJobRate: `XP job/${s}`,
     showBasePercent: `% base/${s}`,
     showJobPercent: `% job/${s}`,
-    showBaseEta: "ETA base",
-    showJobEta: "ETA job",
+    showBaseEta: "Falta base",
+    showJobEta: "Falta job",
   };
 }

@@ -3,13 +3,18 @@ import { useAddonConfig } from "../../hooks/useAddonConfig";
 import type { ClientInfo } from "../../lib/types";
 import { xpMeterDefaultConfig, xpMeterRowLabels } from "./config";
 import {
-  DEFAULT_WINDOW_MS,
   etaToNextLevelMs,
   formatDuration,
   formatNumber,
   formatPercent,
-  xpPerMinute,
+  xpPerMinuteAdaptive,
 } from "./format";
+
+// Stable mean — XP/min is averaged over a fixed 5-minute trailing
+// window (with adaptive denominator if we haven't been running 5
+// min yet). The settings-modal selector is purely a display
+// multiplier on top of this.
+const RATE_WINDOW_MS = 5 * 60_000;
 import { useXpEvents } from "./useXpEvents";
 import "./xp-meter.css";
 
@@ -35,15 +40,15 @@ export function XpMeter({ pid, client: _client }: Props) {
   }, []);
 
   const stats = useMemo(() => {
-    // The underlying mean is always computed over a fixed 1-minute
-    // window — that's the value with stable statistical meaning. The
-    // window picker is purely a display multiplier: "XP base/5min" =
-    // (XP/min) * 5, i.e. a projection of what the last minute's pace
-    // would yield over 5 minutes. ETA is independent of the
-    // multiplier — "minutes until level" doesn't change just because
-    // we phrased the rate differently.
-    const basePerMin = xpPerMinute(samples, "base", now, DEFAULT_WINDOW_MS);
-    const jobPerMin = xpPerMinute(samples, "job", now, DEFAULT_WINDOW_MS);
+    // Underlying rate is averaged over the fixed 5-minute trailing
+    // window — that's the value with stable statistical meaning. If
+    // we don't have 5 min of recordings yet, xpPerMinuteAdaptive
+    // estimates with whatever's available. The settings-modal
+    // selector is purely a display multiplier on this rate. ETA is
+    // independent of the multiplier — "minutes until level" doesn't
+    // change just because we phrased the rate differently.
+    const basePerMin = xpPerMinuteAdaptive(samples, "base", now, RATE_WINDOW_MS);
+    const jobPerMin = xpPerMinuteAdaptive(samples, "job", now, RATE_WINDOW_MS);
     const multiplier = config.windowMs / 60_000;
 
     const baseProjection = basePerMin * multiplier;

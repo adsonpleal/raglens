@@ -12,10 +12,10 @@ import { onExpGain, onExpTotal } from "../../lib/events";
 import type { ExpField, ExpGain } from "../../lib/types";
 import type { ExpSample } from "./format";
 
-// The displayed value is computed from a fixed 1-minute rolling
-// rate (the picker is a display multiplier), so we only need a
-// couple of minutes of headroom for the sliding window.
-const MAX_HISTORY_MS = 3 * 60_000;
+// Rate is averaged over a fixed 5-min trailing window in XpMeter,
+// so retain a touch more than that to make the sliding-window math
+// stable across the boundary.
+const MAX_HISTORY_MS = 6 * 60_000;
 
 export type XpTotals = {
   base: number | null;

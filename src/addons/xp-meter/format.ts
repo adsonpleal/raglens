@@ -39,6 +39,34 @@ export function xpPerMinute(
   return (total / windowMs) * 60_000;
 }
 
+/** Like `xpPerMinute` but with an adaptive denominator: if there
+ *  isn't yet a full `windowMs` worth of samples, divide by the
+ *  elapsed time since the first in-window sample instead so the
+ *  meter shows a real estimate right away. The denominator is
+ *  floored at 1 second to avoid the rate spiking to absurd values
+ *  on the very first packet (when "elapsed" would be ~0). */
+export function xpPerMinuteAdaptive(
+  samples: readonly ExpSample[],
+  kind: ExpKind,
+  nowMs: number,
+  windowMs: number,
+): number {
+  const cutoff = nowMs - windowMs;
+  let total = 0;
+  let earliest: number | null = null;
+  for (const s of samples) {
+    if (s.kind !== kind) continue;
+    if (s.timestampMs <= cutoff || s.timestampMs > nowMs) continue;
+    total += s.delta;
+    if (earliest === null || s.timestampMs < earliest) {
+      earliest = s.timestampMs;
+    }
+  }
+  if (earliest === null) return 0;
+  const elapsedMs = Math.max(1000, nowMs - earliest);
+  return (total / elapsedMs) * 60_000;
+}
+
 /**
  * Percent of the current level gained per minute.
  * `levelTotalExp` is the XP required to complete the current level.
