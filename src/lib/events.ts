@@ -1,4 +1,4 @@
-import { listen, UnlistenFn } from "@tauri-apps/api/event";
+import { emit, listen, UnlistenFn } from "@tauri-apps/api/event";
 import type {
   CaptureStats,
   ClientDetected,
@@ -47,6 +47,28 @@ export function onSelectedClientChanged(
   handler: (event: SelectedClient) => void,
 ): Promise<UnlistenFn> {
   return listen<SelectedClient>("selected-client-changed", (e) => handler(e.payload));
+}
+
+/** Frontend-only event. Main window emits when a per-addon overlay
+ *  config setting (e.g. alwaysVisible) flips. Overlay windows
+ *  subscribe and react. */
+export type OverlayConfigChanged = {
+  addon_id: string;
+  always_visible: boolean;
+};
+
+export function emitOverlayConfigChanged(
+  payload: OverlayConfigChanged,
+): Promise<void> {
+  return emit("overlay-config-changed", payload);
+}
+
+export function onOverlayConfigChanged(
+  handler: (event: OverlayConfigChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<OverlayConfigChanged>("overlay-config-changed", (e) =>
+    handler(e.payload),
+  );
 }
 
 export function onExpGain(handler: (gain: ExpGain) => void): Promise<UnlistenFn> {

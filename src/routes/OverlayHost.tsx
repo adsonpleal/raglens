@@ -5,8 +5,13 @@ import { XpMeter } from "../addons/xp-meter/XpMeter";
 import { getAddon } from "../addons/registry";
 import { useDraggableWindow } from "../hooks/useDraggableWindow";
 import { useSelectedPid } from "../hooks/useSelectedPid";
-import { onClientUpdated, onForegroundChanged } from "../lib/events";
+import {
+  onClientUpdated,
+  onForegroundChanged,
+  onOverlayConfigChanged,
+} from "../lib/events";
 import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
+import { getOverlayAlwaysVisible } from "../lib/store";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
 
@@ -26,12 +31,42 @@ export function OverlayHost({ addonId }: Props) {
   const Component = ADDON_COMPONENTS[addonId];
   const selectedPid = useSelectedPid();
   const [client, setClient] = useState<ClientInfo | null>(null);
+  const [alwaysVisible, setAlwaysVisible] = useState(false);
   const shellRef = useRef<HTMLDivElement>(null);
 
   // Drag the window from JS so Windows Aero Snap never sees a real
   // OS-driven drag and never offers to snap the overlay to a screen
   // edge.
   useDraggableWindow(shellRef);
+
+  // Hydrate the per-addon alwaysVisible flag from the store on mount,
+  // then keep it in sync with `overlay-config-changed` events emitted
+  // by the main window when the user flips the toggle.
+  useEffect(() => {
+    let cancelled = false;
+    let unlisten: UnlistenFn | null = null;
+
+    getOverlayAlwaysVisible(addonId)
+      .then((v) => {
+        if (!cancelled) setAlwaysVisible(v);
+      })
+      .catch((e) =>
+        console.warn(`[overlay] getOverlayAlwaysVisible(${addonId}) failed:`, e),
+      );
+
+    onOverlayConfigChanged((evt) => {
+      if (evt.addon_id !== addonId) return;
+      if (!cancelled) setAlwaysVisible(evt.always_visible);
+    }).then((u) => {
+      if (cancelled) u();
+      else unlisten = u;
+    });
+
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, [addonId]);
 
   // Track the selected client's full info so the overlay can render
   // its title once ZC_ACK_REQNAME_TITLE has fired.
@@ -69,9 +104,10 @@ export function OverlayHost({ addonId }: Props) {
   //  - No client selected → hidden. Without a selection the overlay
   //    has nothing to show, so it stays off-screen until the user
   //    picks one in Raglens.
-  //  - Client selected → shown when that Ragexe is foreground, OR
-  //    raglens itself is foreground (so dragging / configuring the
-  //    overlay keeps it visible).
+  //  - Client selected + alwaysVisible → shown unconditionally.
+  //  - Client selected + auto-foco → shown when that Ragexe is
+  //    foreground, OR raglens itself is foreground (so dragging /
+  //    configuring the overlay keeps it visible).
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
@@ -81,9 +117,19 @@ export function OverlayHost({ addonId }: Props) {
       const ownPid = await raglensPid();
       const apply = async (fg: number | null) => {
         if (cancelled) return;
+        if (selectedPid === null) {
+          try {
+            await w.hide();
+          } catch (e) {
+            console.error("[overlay] hide failed:", e);
+          }
+          return;
+        }
         const visible =
-          selectedPid !== null &&
-          (fg === null || fg === selectedPid || fg === ownPid);
+          alwaysVisible ||
+          fg === null ||
+          fg === selectedPid ||
+          fg === ownPid;
         try {
           if (visible) await w.show();
           else await w.hide();
@@ -107,7 +153,7 @@ export function OverlayHost({ addonId }: Props) {
       cancelled = true;
       if (unlisten) unlisten();
     };
-  }, [selectedPid]);
+  }, [selectedPid, alwaysVisible]);
 
   if (!manifest || !Component) {
     return (

@@ -43,6 +43,18 @@ export async function setOverlayLocked(
   await store.save();
 }
 
+export async function getOverlayAlwaysVisible(addonId: string): Promise<boolean> {
+  return (await store.get<boolean>(`overlay.${addonId}.alwaysVisible`)) ?? false;
+}
+
+export async function setOverlayAlwaysVisible(
+  addonId: string,
+  value: boolean,
+): Promise<void> {
+  await store.set(`overlay.${addonId}.alwaysVisible`, value);
+  await store.save();
+}
+
 export async function getEnabledAddons(): Promise<string[]> {
   return (await store.get<string[]>("app.enabledAddons")) ?? [];
 }

@@ -24,8 +24,10 @@ export function MainWindow() {
     manifests,
     enabled,
     locked,
+    alwaysVisible,
     toggle,
-    setOne,
+    setOneLocked,
+    setOneAlwaysVisible,
     lockAll,
     unlockAll,
     allLocked,
@@ -110,8 +112,10 @@ export function MainWindow() {
                 manifest={a}
                 enabled={enabled.has(a.id)}
                 locked={locked.get(a.id) ?? false}
+                alwaysVisible={alwaysVisible.get(a.id) ?? false}
                 onToggle={() => toggle(a)}
-                onLockToggle={(v) => setOne(a.id, v)}
+                onLockToggle={(v) => setOneLocked(a.id, v)}
+                onAlwaysVisibleToggle={(v) => setOneAlwaysVisible(a.id, v)}
               />
             ))}
           </ul>

@@ -5,16 +5,20 @@ type Props = {
   manifest: AddonManifest;
   enabled: boolean;
   locked: boolean;
+  alwaysVisible: boolean;
   onToggle: () => void;
   onLockToggle: (value: boolean) => void;
+  onAlwaysVisibleToggle: (value: boolean) => void;
 };
 
 export function AddonRow({
   manifest,
   enabled,
   locked,
+  alwaysVisible,
   onToggle,
   onLockToggle,
+  onAlwaysVisibleToggle,
 }: Props) {
   return (
     <li className="addon-row">
@@ -24,12 +28,20 @@ export function AddonRow({
       </div>
       <div className="addon-controls">
         {enabled && (
-          <button
-            className="ghost"
-            onClick={() => onLockToggle(!locked)}
-          >
-            {locked ? t.addons.unlock : t.addons.lock}
-          </button>
+          <>
+            <button
+              className="ghost"
+              onClick={() => onAlwaysVisibleToggle(!alwaysVisible)}
+            >
+              {alwaysVisible ? t.addons.autoVisible : t.addons.alwaysVisible}
+            </button>
+            <button
+              className="ghost"
+              onClick={() => onLockToggle(!locked)}
+            >
+              {locked ? t.addons.unlock : t.addons.lock}
+            </button>
+          </>
         )}
         <label className="switch" aria-label={manifest.name}>
           <input type="checkbox" checked={enabled} onChange={onToggle} />

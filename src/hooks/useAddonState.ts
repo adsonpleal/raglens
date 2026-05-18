@@ -1,10 +1,12 @@
-// Per-addon enable/lock state. One overlay per enabled addon; the
-// overlay binds to the currently-selected client at runtime via
-// useSelectedPid (no per-PID overlay multiplexing here).
+// Per-addon enable / lock / always-visible state. One overlay per
+// enabled addon; the overlay binds to the currently-selected client
+// at runtime via useSelectedPid (no per-PID overlay multiplexing
+// here).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ADDONS, getAddon } from "../addons/registry";
 import type { AddonManifest } from "../addons/types";
+import { emitOverlayConfigChanged } from "../lib/events";
 import {
   closeAddonOverlay,
   setAddonOverlayLocked,
@@ -12,13 +14,18 @@ import {
 } from "../lib/overlays";
 import {
   getEnabledAddons,
+  getOverlayAlwaysVisible,
   getOverlayLocked,
   setEnabledAddons,
+  setOverlayAlwaysVisible,
 } from "../lib/store";
 
 export function useAddonState() {
   const [enabled, setEnabled] = useState<Set<string>>(new Set());
   const [locked, setLocked] = useState<Map<string, boolean>>(new Map());
+  const [alwaysVisible, setAlwaysVisible] = useState<Map<string, boolean>>(
+    new Map(),
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -28,11 +35,16 @@ export function useAddonState() {
       if (cancelled) return;
 
       const l = new Map<string, boolean>();
-      for (const id of valid) l.set(id, await getOverlayLocked(id));
+      const v = new Map<string, boolean>();
+      for (const id of valid) {
+        l.set(id, await getOverlayLocked(id));
+        v.set(id, await getOverlayAlwaysVisible(id));
+      }
       if (cancelled) return;
 
       setEnabled(new Set(valid));
       setLocked(l);
+      setAlwaysVisible(v);
     })();
     return () => {
       cancelled = true;
@@ -66,10 +78,18 @@ export function useAddonState() {
           const next = new Set(enabled);
           next.add(id);
           await persistEnabled(next);
-          const storeLocked = await getOverlayLocked(id);
+          const [storeLocked, storeAlways] = await Promise.all([
+            getOverlayLocked(id),
+            getOverlayAlwaysVisible(id),
+          ]);
           setLocked((m) => {
             const nm = new Map(m);
             nm.set(id, storeLocked);
+            return nm;
+          });
+          setAlwaysVisible((m) => {
+            const nm = new Map(m);
+            nm.set(id, storeAlways);
             return nm;
           });
         }
@@ -80,7 +100,7 @@ export function useAddonState() {
     [enabled, persistEnabled],
   );
 
-  const setOne = useCallback(async (id: string, value: boolean) => {
+  const setOneLocked = useCallback(async (id: string, value: boolean) => {
     await setAddonOverlayLocked(id, value);
     setLocked((m) => {
       const nm = new Map(m);
@@ -88,6 +108,24 @@ export function useAddonState() {
       return nm;
     });
   }, []);
+
+  const setOneAlwaysVisible = useCallback(
+    async (id: string, value: boolean) => {
+      await setOverlayAlwaysVisible(id, value);
+      setAlwaysVisible((m) => {
+        const nm = new Map(m);
+        nm.set(id, value);
+        return nm;
+      });
+      // Notify the overlay window so it can flip its visibility logic
+      // without polling the store.
+      await emitOverlayConfigChanged({
+        addon_id: id,
+        always_visible: value,
+      });
+    },
+    [],
+  );
 
   const lockAll = useCallback(async () => {
     for (const id of enabled) {
@@ -122,8 +160,10 @@ export function useAddonState() {
     manifests: ADDONS,
     enabled,
     locked,
+    alwaysVisible,
     toggle,
-    setOne,
+    setOneLocked,
+    setOneAlwaysVisible,
     lockAll,
     unlockAll,
     allLocked,
