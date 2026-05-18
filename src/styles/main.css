@@ -267,6 +267,45 @@ button.ghost {
   font-size: 13px;
 }
 
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: #2d4d2d;
+  border: 1px solid #3d6e3d;
+  border-radius: 6px;
+  color: #b8e0b8;
+  font-size: 13px;
+}
+.update-banner__link {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.update-banner__link:hover {
+  color: #ffffff;
+}
+.update-banner__close {
+  background: transparent;
+  border: none;
+  padding: 2px 8px;
+  font-size: 16px;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+.update-banner__close:hover {
+  color: #ffffff;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

@@ -3,10 +3,12 @@ import { AddonRow } from "../components/AddonRow";
 import { AddonSettingsModal } from "../components/AddonSettingsModal";
 import { ClientPicker } from "../components/ClientPicker";
 import { NicPicker } from "../components/NicPicker";
+import { UpdateBanner } from "../components/UpdateBanner";
 import { useAddonShortcuts } from "../hooks/useAddonShortcuts";
 import { useAddonState } from "../hooks/useAddonState";
 import { useCaptureSession } from "../hooks/useCaptureSession";
 import { useClients } from "../hooks/useClients";
+import { useLatestRelease } from "../hooks/useLatestRelease";
 import { t } from "../i18n/pt-br";
 
 export function MainWindow() {
@@ -43,6 +45,9 @@ export function MainWindow() {
   // unregistering as the map changes.
   useAddonShortcuts(shortcuts);
 
+  const { available: updateAvailable, dismiss: dismissUpdate } =
+    useLatestRelease();
+
   const [settingsAddonId, setSettingsAddonId] = useState<string | null>(null);
 
   const statusKey = isRecording ? "recording" : "idle";
@@ -59,6 +64,12 @@ export function MainWindow() {
         </span>
       </header>
       <main className="app-main">
+        {updateAvailable && (
+          <UpdateBanner
+            release={updateAvailable}
+            onDismiss={dismissUpdate}
+          />
+        )}
         <section className="card">
           <h2>{t.capture.network}</h2>
           <div className="capture-row">

@@ -122,3 +122,12 @@ export async function setSelectedInterface(ipv4: string): Promise<void> {
   await store.set("app.selectedInterface", ipv4);
   await store.save();
 }
+
+export async function getDismissedUpdateVersion(): Promise<string | null> {
+  return (await store.get<string>("app.dismissedUpdateVersion")) ?? null;
+}
+
+export async function setDismissedUpdateVersion(version: string): Promise<void> {
+  await store.set("app.dismissedUpdateVersion", version);
+  await store.save();
+}

@@ -30,4 +30,8 @@ export const t = {
   errors: {
     noInterface: "Selecione uma placa de rede antes de iniciar.",
   },
+  update: {
+    available: "Nova versão disponível: {version}. Clique para baixar.",
+    dismiss: "Dispensar",
+  },
 };

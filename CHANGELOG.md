@@ -7,6 +7,23 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-18
+
+### Adicionado
+
+- Banner de "nova versão disponível" na janela principal. No mount
+  do `MainWindow` o app consulta uma vez o endpoint
+  `releases/latest` da API do GitHub e, se a tag de lá for
+  estritamente mais nova do que a versão rodando, mostra uma faixa
+  no topo do conteúdo: clicar no texto abre a página do release no
+  navegador padrão (via `tauri-plugin-opener`, com `github.com` já
+  permitido no manifest de capabilities). O `×` à direita
+  dispensa o banner — a tag dispensada é persistida em
+  `app.dismissedUpdateVersion` no `raglens.json`, então ele volta
+  a aparecer só quando sair uma versão ainda mais nova. Falha de
+  rede / API colapsa silenciosamente em `null`; nenhum erro é
+  mostrado pro usuário.
+
 ## [0.1.2] - 2026-05-18
 
 ### Corrigido
@@ -184,7 +201,8 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/adsonpleal/raglens/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/adsonpleal/raglens/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/adsonpleal/raglens/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/adsonpleal/raglens/releases/tag/v0.1.0
