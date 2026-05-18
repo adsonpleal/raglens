@@ -12,10 +12,10 @@ import { onExpGain, onExpTotal } from "../../lib/events";
 import type { ExpField, ExpGain } from "../../lib/types";
 import type { ExpSample } from "./format";
 
-// Retain samples for slightly longer than the largest selectable
-// window (1 hour) so switching to the wider window in the settings
-// modal immediately has data to work with.
-const MAX_HISTORY_MS = 75 * 60_000;
+// The displayed value is computed from a fixed 1-minute rolling
+// rate (the picker is a display multiplier), so we only need a
+// couple of minutes of headroom for the sliding window.
+const MAX_HISTORY_MS = 3 * 60_000;
 
 export type XpTotals = {
   base: number | null;

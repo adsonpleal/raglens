@@ -3,11 +3,12 @@ import { useAddonConfig } from "../../hooks/useAddonConfig";
 import type { ClientInfo } from "../../lib/types";
 import { xpMeterDefaultConfig, xpMeterRowLabels } from "./config";
 import {
+  DEFAULT_WINDOW_MS,
   etaToNextLevelMs,
   formatDuration,
   formatNumber,
   formatPercent,
-  xpInWindow,
+  xpPerMinute,
 } from "./format";
 import { useXpEvents } from "./useXpEvents";
 import "./xp-meter.css";
@@ -34,12 +35,19 @@ export function XpMeter({ pid, client: _client }: Props) {
   }, []);
 
   const stats = useMemo(() => {
-    // Values displayed match the label: "XP base/5min" = XP gained in
-    // the last 5 min. ETA still computes against the per-minute rate
-    // implied by that window, since "time until level" is a duration
-    // independent of how we phrase the rate.
-    const baseInWindow = xpInWindow(samples, "base", now, config.windowMs);
-    const jobInWindow = xpInWindow(samples, "job", now, config.windowMs);
+    // The underlying mean is always computed over a fixed 1-minute
+    // window — that's the value with stable statistical meaning. The
+    // window picker is purely a display multiplier: "XP base/5min" =
+    // (XP/min) * 5, i.e. a projection of what the last minute's pace
+    // would yield over 5 minutes. ETA is independent of the
+    // multiplier — "minutes until level" doesn't change just because
+    // we phrased the rate differently.
+    const basePerMin = xpPerMinute(samples, "base", now, DEFAULT_WINDOW_MS);
+    const jobPerMin = xpPerMinute(samples, "job", now, DEFAULT_WINDOW_MS);
+    const multiplier = config.windowMs / 60_000;
+
+    const baseProjection = basePerMin * multiplier;
+    const jobProjection = jobPerMin * multiplier;
 
     const baseRemaining =
       totals.base != null && totals.nextBase != null
@@ -52,15 +60,12 @@ export function XpMeter({ pid, client: _client }: Props) {
 
     const basePercent =
       totals.nextBase && totals.nextBase > 0
-        ? (baseInWindow / totals.nextBase) * 100
+        ? (baseProjection / totals.nextBase) * 100
         : NaN;
     const jobPercent =
       totals.nextJob && totals.nextJob > 0
-        ? (jobInWindow / totals.nextJob) * 100
+        ? (jobProjection / totals.nextJob) * 100
         : NaN;
-
-    const basePerMin = (baseInWindow / config.windowMs) * 60_000;
-    const jobPerMin = (jobInWindow / config.windowMs) * 60_000;
 
     const baseEta =
       baseRemaining !== null
@@ -72,8 +77,8 @@ export function XpMeter({ pid, client: _client }: Props) {
         : Number.POSITIVE_INFINITY;
 
     return {
-      baseInWindow,
-      jobInWindow,
+      baseProjection,
+      jobProjection,
       basePercent,
       jobPercent,
       baseEta,
@@ -90,10 +95,10 @@ export function XpMeter({ pid, client: _client }: Props) {
       )}
       <dl className="xp-meter__rows">
         {config.showBaseRate && (
-          <Row label={labels.showBaseRate} value={formatNumber(stats.baseInWindow)} />
+          <Row label={labels.showBaseRate} value={formatNumber(stats.baseProjection)} />
         )}
         {config.showJobRate && (
-          <Row label={labels.showJobRate} value={formatNumber(stats.jobInWindow)} />
+          <Row label={labels.showJobRate} value={formatNumber(stats.jobProjection)} />
         )}
         {config.showBasePercent && (
           <Row
