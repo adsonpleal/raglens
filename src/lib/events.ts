@@ -56,6 +56,11 @@ export type OverlayConfigChanged = {
   addon_id: string;
   always_visible?: boolean;
   user_hidden?: boolean;
+  /** Set true when the addon-specific config (the modal-driven blob
+   *  at `addon.<id>.config`) changed. Overlays re-read the config
+   *  via `getAddonConfig` rather than receiving it in the payload —
+   *  shape is per-addon. */
+  addon_config_changed?: boolean;
 };
 
 export function emitOverlayConfigChanged(

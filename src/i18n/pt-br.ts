@@ -25,6 +25,7 @@ export const t = {
     lockAll: "Travar overlays",
     unlockAll: "Destravar overlays",
     alwaysVisible: "Sempre visível",
+    configure: "Configurar",
     notFound: "Addon não encontrado:",
   },
   errors: {

@@ -85,6 +85,26 @@ export async function setOverlayShortcut(
   await store.save();
 }
 
+/** Per-addon arbitrary config blob. The caller supplies defaults
+ *  and the returned object is the defaults merged with whatever the
+ *  store has, so newly-added fields gracefully take their default
+ *  value on old saved configs. */
+export async function getAddonConfig<T extends object>(
+  addonId: string,
+  defaults: T,
+): Promise<T> {
+  const stored = await store.get<Partial<T>>(`addon.${addonId}.config`);
+  return { ...defaults, ...(stored ?? {}) };
+}
+
+export async function setAddonConfig<T extends object>(
+  addonId: string,
+  config: T,
+): Promise<void> {
+  await store.set(`addon.${addonId}.config`, config);
+  await store.save();
+}
+
 export async function getEnabledAddons(): Promise<string[]> {
   return (await store.get<string[]>("app.enabledAddons")) ?? [];
 }

@@ -266,3 +266,112 @@ button.ghost {
   border-radius: 6px;
   font-size: 13px;
 }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: #1a1a22;
+  border: 1px solid #2a2a36;
+  border-radius: 8px;
+  min-width: 380px;
+  max-width: 560px;
+  max-height: 80vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 16px 0;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #2a2a36;
+}
+.modal-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.icon-button {
+  padding: 2px 8px;
+  font-size: 14px;
+}
+
+.modal-section {
+  padding: 14px 18px 4px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.modal-section h3 {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b8b8c4;
+  margin: 0;
+}
+
+.modal-hint {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.modal-hint code {
+  background: #14141a;
+  border: 1px solid #2a2a36;
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 11px;
+}
+
+.modal-shortcut-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.modal-input {
+  flex: 1;
+  background: #14141a;
+  border: 1px solid #2a2a36;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font: inherit;
+  color: inherit;
+  font-family: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+
+.modal-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 16px;
+}
+.modal-checklist li label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.modal-checklist li input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3d6e3d;
+  cursor: pointer;
+}

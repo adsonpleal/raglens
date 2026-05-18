@@ -20,12 +20,6 @@
     -1px -1px 0 #000;
 }
 
-.xp-meter__title {
-  font-weight: bold;
-  color: #ffe070; /* RO-style yellow for character / header text */
-  margin-bottom: 1px;
-}
-
 .xp-meter__waiting {
   color: #ffb070;
   font-style: italic;

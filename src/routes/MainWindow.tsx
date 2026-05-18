@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { AddonRow } from "../components/AddonRow";
+import { AddonSettingsModal } from "../components/AddonSettingsModal";
 import { ClientPicker } from "../components/ClientPicker";
 import { NicPicker } from "../components/NicPicker";
 import { useAddonShortcuts } from "../hooks/useAddonShortcuts";
@@ -30,6 +32,7 @@ export function MainWindow() {
     toggle,
     setOneLocked,
     setOneAlwaysVisible,
+    setOneShortcut,
     lockAll,
     unlockAll,
     allLocked,
@@ -39,6 +42,8 @@ export function MainWindow() {
   // addon that has one configured. The hook handles registering /
   // unregistering as the map changes.
   useAddonShortcuts(shortcuts);
+
+  const [settingsAddonId, setSettingsAddonId] = useState<string | null>(null);
 
   const statusKey = isRecording ? "recording" : "idle";
   const statsLine = t.capture.statsTemplate
@@ -123,6 +128,7 @@ export function MainWindow() {
                 onToggle={() => toggle(a)}
                 onLockToggle={(v) => setOneLocked(a.id, v)}
                 onAlwaysVisibleToggle={(v) => setOneAlwaysVisible(a.id, v)}
+                onConfigure={() => setSettingsAddonId(a.id)}
               />
             ))}
           </ul>
@@ -130,6 +136,15 @@ export function MainWindow() {
 
         {error && <div className="error-banner">{error}</div>}
       </main>
+
+      <AddonSettingsModal
+        addonId={settingsAddonId}
+        currentShortcut={
+          settingsAddonId ? shortcuts.get(settingsAddonId) : undefined
+        }
+        onSaveShortcut={setOneShortcut}
+        onClose={() => setSettingsAddonId(null)}
+      />
     </div>
   );
 }

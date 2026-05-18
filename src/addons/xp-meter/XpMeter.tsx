@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import { useAddonConfig } from "../../hooks/useAddonConfig";
 import type { ClientInfo } from "../../lib/types";
+import { xpMeterDefaultConfig } from "./config";
 import {
   DEFAULT_WINDOW_MS,
   etaToNextLevelMs,
@@ -16,11 +18,17 @@ type Props = {
   client: ClientInfo | null;
 };
 
-export function XpMeter({ pid, client }: Props) {
+// `client` is still accepted for API compatibility with OverlayHost,
+// but the XP meter no longer renders the character name — the user
+// already knows which client they selected.
+//
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function XpMeter({ pid, client: _client }: Props) {
   const { samples, totals, hasEverReceived } = useXpEvents(pid);
+  const config = useAddonConfig("xp-meter", xpMeterDefaultConfig);
 
-  // Re-render every second so the rolling-window calcs stay fresh even
-  // when no new packet has arrived. Cheap (a single state tick).
+  // Re-render every second so the rolling-window calcs stay fresh
+  // even when no new packet has arrived.
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);
@@ -57,23 +65,32 @@ export function XpMeter({ pid, client }: Props) {
     return { baseRate, jobRate, basePercent, jobPercent, baseEta, jobEta };
   }, [samples, totals, now]);
 
-  const title = client?.name ?? `Cliente · PID ${pid}`;
-
   return (
     <div className="xp-meter">
-      <div className="xp-meter__title">{title}</div>
       {!hasEverReceived && (
         <div className="xp-meter__waiting">
           Aguardando primeiro pacote de experiência…
         </div>
       )}
       <dl className="xp-meter__rows">
-        <Row label="XP base/min" value={formatNumber(stats.baseRate)} />
-        <Row label="XP job/min" value={formatNumber(stats.jobRate)} />
-        <Row label="% base/min" value={formatPercent(stats.basePercent)} />
-        <Row label="% job/min" value={formatPercent(stats.jobPercent)} />
-        <Row label="ETA base" value={formatDuration(stats.baseEta)} />
-        <Row label="ETA job" value={formatDuration(stats.jobEta)} />
+        {config.showBaseRate && (
+          <Row label="XP base/min" value={formatNumber(stats.baseRate)} />
+        )}
+        {config.showJobRate && (
+          <Row label="XP job/min" value={formatNumber(stats.jobRate)} />
+        )}
+        {config.showBasePercent && (
+          <Row label="% base/min" value={formatPercent(stats.basePercent)} />
+        )}
+        {config.showJobPercent && (
+          <Row label="% job/min" value={formatPercent(stats.jobPercent)} />
+        )}
+        {config.showBaseEta && (
+          <Row label="ETA base" value={formatDuration(stats.baseEta)} />
+        )}
+        {config.showJobEta && (
+          <Row label="ETA job" value={formatDuration(stats.jobEta)} />
+        )}
       </dl>
     </div>
   );

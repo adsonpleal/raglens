@@ -9,6 +9,7 @@ type Props = {
   onToggle: () => void;
   onLockToggle: (value: boolean) => void;
   onAlwaysVisibleToggle: (value: boolean) => void;
+  onConfigure: () => void;
 };
 
 export function AddonRow({
@@ -19,6 +20,7 @@ export function AddonRow({
   onToggle,
   onLockToggle,
   onAlwaysVisibleToggle,
+  onConfigure,
 }: Props) {
   return (
     <li className="addon-row">
@@ -42,6 +44,9 @@ export function AddonRow({
               onClick={() => onLockToggle(!locked)}
             >
               {locked ? t.addons.unlock : t.addons.lock}
+            </button>
+            <button className="ghost" onClick={onConfigure}>
+              {t.addons.configure}
             </button>
           </>
         )}
