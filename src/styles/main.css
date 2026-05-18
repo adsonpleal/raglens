@@ -401,6 +401,11 @@ button.ghost {
   color: inherit;
   font-family: "Cascadia Mono", "Consolas", ui-monospace, monospace;
 }
+.modal-input--inline {
+  flex: 0 0 auto;
+  width: 56px;
+  padding: 2px 6px;
+}
 
 .modal-checklist {
   list-style: none;

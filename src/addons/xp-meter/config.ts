@@ -31,6 +31,7 @@ export const xpMeterWindowOptions: ReadonlyArray<{
   value: number;
 }> = [
   { label: "1 min", value: 60_000 },
+  { label: "3 min", value: 3 * 60_000 },
   { label: "5 min", value: 5 * 60_000 },
   { label: "15 min", value: 15 * 60_000 },
   { label: "30 min", value: 30 * 60_000 },

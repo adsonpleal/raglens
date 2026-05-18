@@ -1,6 +1,6 @@
 [package]
 name = "raglens"
-version = "0.1.4"
+version = "0.1.5"
 description = "WoW-addon-style overlay framework for Ragnarok Online"
 authors = ["adson"]
 edition = "2021"

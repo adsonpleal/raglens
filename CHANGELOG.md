@@ -7,6 +7,19 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-18
+
+### Adicionado
+
+- Janela de tempo do XP meter ganhou um preset de **3 min** entre
+  o 1 min e o 5 min, e uma opção **Personalizado** com input em
+  minutos (1–1440). O input commita a cada valor numérico válido,
+  cair em foco ativa o radio automaticamente, e o draft é
+  preservado se o usuário voltar pra um preset (não perde o
+  número digitado). Os rótulos das linhas do overlay
+  (`XP base/Xmin`) seguem o valor automaticamente via
+  `xpMeterWindowSuffix`.
+
 ## [0.1.4] - 2026-05-18
 
 ### Adicionado
@@ -240,7 +253,8 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/adsonpleal/raglens/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/adsonpleal/raglens/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/adsonpleal/raglens/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/adsonpleal/raglens/compare/v0.1.1...v0.1.2
