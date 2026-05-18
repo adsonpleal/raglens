@@ -1,13 +1,13 @@
-// Per-addon enable/lock state. Combined with the live client list,
-// drives the overlay reconciler: one overlay per (enabled addon,
-// detected PID).
+// Per-addon enable/lock state. One overlay per enabled addon; the
+// overlay binds to the currently-selected client at runtime via
+// useSelectedPid (no per-PID overlay multiplexing here).
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ADDONS, getAddon } from "../addons/registry";
 import type { AddonManifest } from "../addons/types";
 import {
-  closeAllAddonOverlays,
-  setAddonOverlaysLocked,
+  closeAddonOverlay,
+  setAddonOverlayLocked,
   syncOverlays,
 } from "../lib/overlays";
 import {
@@ -15,9 +15,8 @@ import {
   getOverlayLocked,
   setEnabledAddons,
 } from "../lib/store";
-import type { ClientInfo } from "../lib/types";
 
-export function useAddonState(clients: ClientInfo[]) {
+export function useAddonState() {
   const [enabled, setEnabled] = useState<Set<string>>(new Set());
   const [locked, setLocked] = useState<Map<string, boolean>>(new Map());
 
@@ -40,17 +39,14 @@ export function useAddonState(clients: ClientInfo[]) {
     };
   }, []);
 
-  // Reconcile (enabled addons) × (clients with PIDs) → overlays.
-  // Runs on every change to either input. Idempotent.
+  // Reconcile open overlays against the enabled set. One overlay per
+  // enabled addon — no per-client multiplexing.
   useEffect(() => {
-    const pids = clients
-      .map((c) => c.pid)
-      .filter((p): p is number => p !== null);
     const enabledManifests = ADDONS.filter((m) => enabled.has(m.id));
-    syncOverlays(enabledManifests, pids).catch((e) =>
+    syncOverlays(enabledManifests).catch((e) =>
       console.warn("[addon] syncOverlays failed:", e),
     );
-  }, [enabled, clients]);
+  }, [enabled]);
 
   const persistEnabled = useCallback(async (next: Set<string>) => {
     setEnabled(next);
@@ -62,20 +58,14 @@ export function useAddonState(clients: ClientInfo[]) {
       const id = manifest.id;
       try {
         if (enabled.has(id)) {
-          // Effect handles closing — clear enabled set, sync removes them
           const next = new Set(enabled);
           next.delete(id);
           await persistEnabled(next);
-          // Belt-and-braces: also close explicitly in case syncOverlays
-          // hasn't run yet (e.g., clients list is empty).
-          await closeAllAddonOverlays(id);
+          await closeAddonOverlay(id);
         } else {
           const next = new Set(enabled);
           next.add(id);
           await persistEnabled(next);
-          // The reconciler effect spawns the overlays for current clients.
-          // Initialize the locked-map entry as well so the row label
-          // matches what the overlays do.
           const storeLocked = await getOverlayLocked(id);
           setLocked((m) => {
             const nm = new Map(m);
@@ -91,7 +81,7 @@ export function useAddonState(clients: ClientInfo[]) {
   );
 
   const setOne = useCallback(async (id: string, value: boolean) => {
-    await setAddonOverlaysLocked(id, value);
+    await setAddonOverlayLocked(id, value);
     setLocked((m) => {
       const nm = new Map(m);
       nm.set(id, value);
@@ -101,7 +91,7 @@ export function useAddonState(clients: ClientInfo[]) {
 
   const lockAll = useCallback(async () => {
     for (const id of enabled) {
-      await setAddonOverlaysLocked(id, true);
+      await setAddonOverlayLocked(id, true);
     }
     setLocked((m) => {
       const nm = new Map(m);
@@ -112,7 +102,7 @@ export function useAddonState(clients: ClientInfo[]) {
 
   const unlockAll = useCallback(async () => {
     for (const id of enabled) {
-      await setAddonOverlaysLocked(id, false);
+      await setAddonOverlayLocked(id, false);
     }
     setLocked((m) => {
       const nm = new Map(m);

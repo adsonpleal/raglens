@@ -6,6 +6,7 @@ import type {
   ExpGain,
   ExpTotalUpdate,
   ForegroundChanged,
+  SelectedClient,
 } from "./types";
 
 export function onCaptureStarted(handler: () => void): Promise<UnlistenFn> {
@@ -40,6 +41,12 @@ export function onForegroundChanged(
   handler: (event: ForegroundChanged) => void,
 ): Promise<UnlistenFn> {
   return listen<ForegroundChanged>("foreground-changed", (e) => handler(e.payload));
+}
+
+export function onSelectedClientChanged(
+  handler: (event: SelectedClient) => void,
+): Promise<UnlistenFn> {
+  return listen<SelectedClient>("selected-client-changed", (e) => handler(e.payload));
 }
 
 export function onExpGain(handler: (gain: ExpGain) => void): Promise<UnlistenFn> {

@@ -25,6 +25,10 @@ export function clearClientSelection(): Promise<void> {
   return invoke("clear_client_selection");
 }
 
+export function getSelectedPid(): Promise<number | null> {
+  return invoke("get_selected_pid");
+}
+
 export function getForegroundPid(): Promise<number | null> {
   return invoke("get_foreground_pid");
 }

@@ -3,14 +3,14 @@ import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
 import { getAddon } from "../addons/registry";
-import { onForegroundChanged, onClientUpdated } from "../lib/events";
+import { useSelectedPid } from "../hooks/useSelectedPid";
+import { onClientUpdated, onForegroundChanged } from "../lib/events";
 import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
 
 type Props = {
   addonId: string;
-  pid: number;
 };
 
 const ADDON_COMPONENTS: Record<
@@ -20,22 +20,27 @@ const ADDON_COMPONENTS: Record<
   "xp-meter": XpMeter,
 };
 
-export function OverlayHost({ addonId, pid }: Props) {
+export function OverlayHost({ addonId }: Props) {
   const manifest = getAddon(addonId);
   const Component = ADDON_COMPONENTS[addonId];
+  const selectedPid = useSelectedPid();
   const [client, setClient] = useState<ClientInfo | null>(null);
 
-  // Track which client we represent so the overlay header can show
-  // the character name once ZC_ACK_REQNAME_TITLE has fired.
+  // Track the selected client's full info (name, AID) so the overlay
+  // can render its title once ZC_ACK_REQNAME_TITLE has fired.
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
 
     const refresh = async () => {
+      if (selectedPid === null) {
+        setClient(null);
+        return;
+      }
       try {
         const all = await listClients();
         if (cancelled) return;
-        setClient(all.find((c) => c.pid === pid) ?? null);
+        setClient(all.find((c) => c.pid === selectedPid) ?? null);
       } catch (e) {
         console.warn("[overlay] list_clients failed:", e);
       }
@@ -51,12 +56,12 @@ export function OverlayHost({ addonId, pid }: Props) {
       cancelled = true;
       if (unlisten) unlisten();
     };
-  }, [pid]);
+  }, [selectedPid]);
 
   // Foreground-driven visibility. Show when:
-  //  - the bound Ragexe is the foreground process, OR
-  //  - raglens itself is foreground (so config panels stay reachable
-  //    and the overlay doesn't vanish while the user drags it).
+  //  - no client selected (placeholder is on screen so the user can act on it),
+  //  - the selected Ragexe is foreground, OR
+  //  - raglens itself is foreground (configuration / dragging the overlay).
   useEffect(() => {
     let cancelled = false;
     let unlisten: UnlistenFn | null = null;
@@ -66,14 +71,16 @@ export function OverlayHost({ addonId, pid }: Props) {
       const ownPid = await raglensPid();
       const apply = async (fg: number | null) => {
         if (cancelled) return;
-        // Default-visible if the OS hasn't reported a foreground PID
-        // yet — better than hiding while we wait for the first event.
-        const visible = fg === null || fg === pid || fg === ownPid;
+        const visible =
+          selectedPid === null ||
+          fg === null ||
+          fg === selectedPid ||
+          fg === ownPid;
         try {
           if (visible) await w.show();
           else await w.hide();
         } catch (e) {
-          console.error(`[overlay] show/hide failed (pid=${pid}):`, e);
+          console.error("[overlay] show/hide failed:", e);
         }
       };
 
@@ -92,7 +99,7 @@ export function OverlayHost({ addonId, pid }: Props) {
       cancelled = true;
       if (unlisten) unlisten();
     };
-  }, [pid]);
+  }, [selectedPid]);
 
   if (!manifest || !Component) {
     return (
@@ -105,7 +112,13 @@ export function OverlayHost({ addonId, pid }: Props) {
   return (
     <div className="overlay-shell" data-tauri-drag-region>
       <div className="overlay-body" data-tauri-drag-region>
-        <Component pid={pid} client={client} />
+        {selectedPid === null ? (
+          <p className="overlay-placeholder muted">
+            Selecione um cliente em Raglens para começar.
+          </p>
+        ) : (
+          <Component pid={selectedPid} client={client} />
+        )}
       </div>
     </div>
   );

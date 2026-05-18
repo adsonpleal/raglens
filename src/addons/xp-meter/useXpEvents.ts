@@ -40,6 +40,17 @@ export function useXpEvents(pid: number): XpEventsState {
   const hasEverReceivedRef = useRef(false);
   const [hasEverReceived, setHasEverReceived] = useState(false);
 
+  // Reset the running history whenever the bound client changes —
+  // otherwise samples accumulated under the previous selection would
+  // contaminate the new client's XP/min until they aged out.
+  useEffect(() => {
+    setSamples([]);
+    setTotals({ base: null, job: null, nextBase: null, nextJob: null });
+    setLastGain(null);
+    setHasEverReceived(false);
+    hasEverReceivedRef.current = false;
+  }, [pid]);
+
   useEffect(() => {
     let cancelled = false;
     const unsubs: UnlistenFn[] = [];

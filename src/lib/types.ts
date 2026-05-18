@@ -41,6 +41,10 @@ export type ForegroundChanged = {
   pid: number | null;
 };
 
+export type SelectedClient = {
+  pid: number | null;
+};
+
 export type ExpKind = "base" | "job";
 
 export type ExpGain = {

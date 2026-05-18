@@ -62,6 +62,7 @@ pub fn run() {
             connections::list_clients,
             connections::select_client,
             connections::clear_client_selection,
+            connections::get_selected_pid,
             foreground::get_foreground_pid,
             raglens_pid,
         ])

@@ -228,19 +228,38 @@ fn parse_ipv4(s: &str) -> Option<[u8; 4]> {
 
 // ---- Tauri commands ----
 
+#[derive(Serialize, Clone, Debug)]
+pub struct SelectedClient {
+    pub pid: Option<u32>,
+}
+
 #[tauri::command]
 pub fn list_clients(state: State<ConnectionsState>) -> Vec<ClientInfo> {
     state.list_clients()
 }
 
 #[tauri::command]
-pub fn select_client(pid: u32, state: State<ConnectionsState>) -> Result<(), String> {
+pub fn get_selected_pid(state: State<ConnectionsState>) -> Option<u32> {
+    *state.selected_pid.lock().unwrap()
+}
+
+#[tauri::command]
+pub fn select_client(
+    app: AppHandle,
+    pid: u32,
+    state: State<ConnectionsState>,
+) -> Result<(), String> {
     *state.selected_pid.lock().unwrap() = Some(pid);
+    let _ = app.emit("selected-client-changed", SelectedClient { pid: Some(pid) });
     Ok(())
 }
 
 #[tauri::command]
-pub fn clear_client_selection(state: State<ConnectionsState>) -> Result<(), String> {
+pub fn clear_client_selection(
+    app: AppHandle,
+    state: State<ConnectionsState>,
+) -> Result<(), String> {
     *state.selected_pid.lock().unwrap() = None;
+    let _ = app.emit("selected-client-changed", SelectedClient { pid: None });
     Ok(())
 }

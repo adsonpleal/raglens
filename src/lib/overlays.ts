@@ -1,11 +1,13 @@
-// Overlay window lifecycle: one window per (addon, client PID), with
-// foreground-driven visibility handled by the overlay itself.
+// Overlay window lifecycle: one window per enabled addon, always.
+// Which client's data the overlay shows is decided dynamically by the
+// `useSelectedPid` hook reading the backend's selected_pid state, so
+// the window doesn't need to respawn when the user changes selection.
 //
-// Label scheme: `overlay-<addon-id>-<pid>`. PID is the stable
-// per-client identifier; the AID/name fill in over time but aren't
-// known at spawn. Bounds are persisted per addon globally (all
-// overlays of the same addon share the saved size; positions cascade
-// by index so they don't stack).
+// Visibility is foreground-driven: shown when the selected client's
+// Ragexe is in the foreground (or raglens itself is), hidden
+// otherwise. The OverlayHost component handles that — overlays.ts is
+// only responsible for spawning, closing, lock-state, and bounds
+// persistence.
 
 import {
   WebviewWindow,
@@ -21,48 +23,33 @@ import {
 } from "./store";
 
 const DEBOUNCE_MS = 400;
-const CASCADE_STEP = 32;
 
-export function overlayLabel(addonId: string, pid: number): string {
-  return `overlay-${addonId}-${pid}`;
+export function overlayLabel(addonId: string): string {
+  return `overlay-${addonId}`;
 }
 
-export function parseOverlayLabel(
-  label: string,
-): { addonId: string; pid: number } | null {
-  const m = label.match(/^overlay-(.+)-(\d+)$/);
-  if (!m) return null;
-  return { addonId: m[1], pid: parseInt(m[2], 10) };
+export function parseOverlayLabel(label: string): string | null {
+  return label.startsWith("overlay-") ? label.slice("overlay-".length) : null;
 }
 
-export async function spawnAddonOverlayForClient(
+export async function spawnAddonOverlay(
   manifest: AddonManifest,
-  pid: number,
-  cascadeIndex: number,
 ): Promise<WebviewWindow | null> {
-  const label = overlayLabel(manifest.id, pid);
+  const label = overlayLabel(manifest.id);
   const existing = await WebviewWindow.getByLabel(label);
   if (existing) return existing;
 
   const persisted = await getOverlayBounds(manifest.id);
-  const base = persisted ?? {
+  const bounds: OverlayBounds = persisted ?? {
     x: manifest.defaultPosition?.x ?? 120,
     y: manifest.defaultPosition?.y ?? 120,
     width: manifest.defaultSize.width,
     height: manifest.defaultSize.height,
   };
-  // Cascade offset so multi-client overlays don't pile on top of each
-  // other. User drags wherever they want from there.
-  const bounds: OverlayBounds = {
-    x: base.x + cascadeIndex * CASCADE_STEP,
-    y: base.y + cascadeIndex * CASCADE_STEP,
-    width: base.width,
-    height: base.height,
-  };
   const locked = await getOverlayLocked(manifest.id);
 
   const w = new WebviewWindow(label, {
-    url: `/?w=overlay&addon=${encodeURIComponent(manifest.id)}&pid=${pid}`,
+    url: `/?w=overlay&addon=${encodeURIComponent(manifest.id)}`,
     title: manifest.name,
     width: bounds.width,
     height: bounds.height,
@@ -73,7 +60,7 @@ export async function spawnAddonOverlayForClient(
     transparent: true,
     skipTaskbar: true,
     resizable: true,
-    visible: false, // visibility is foreground-driven; overlay shows itself once the watcher fires
+    visible: false, // OverlayHost shows itself once foreground state is known
   });
 
   w.once("tauri://created", async () => {
@@ -89,66 +76,43 @@ export async function spawnAddonOverlayForClient(
   return w;
 }
 
-export async function closeAddonOverlay(
-  addonId: string,
-  pid: number,
-): Promise<void> {
-  const w = await WebviewWindow.getByLabel(overlayLabel(addonId, pid));
+export async function closeAddonOverlay(addonId: string): Promise<void> {
+  const w = await WebviewWindow.getByLabel(overlayLabel(addonId));
   if (w) await w.close();
 }
 
-export async function closeAllAddonOverlays(addonId: string): Promise<void> {
-  const all = await getAllWebviewWindows();
-  for (const w of all) {
-    const parsed = parseOverlayLabel(w.label);
-    if (parsed?.addonId === addonId) {
-      await w.close();
-    }
-  }
-}
-
-export async function setAddonOverlaysLocked(
+export async function setAddonOverlayLocked(
   addonId: string,
   locked: boolean,
 ): Promise<void> {
-  const all = await getAllWebviewWindows();
-  for (const w of all) {
-    const parsed = parseOverlayLabel(w.label);
-    if (parsed?.addonId === addonId) {
-      await w.setIgnoreCursorEvents(locked);
-    }
+  const w = await WebviewWindow.getByLabel(overlayLabel(addonId));
+  if (w) {
+    await w.setIgnoreCursorEvents(locked);
   }
   await setOverlayLocked(addonId, locked);
 }
 
-/** Reconcile the open overlay windows against the desired set
- *  (enabled addons × detected clients). Idempotent — safe to call on
- *  every clients/enabled state change. */
+/** Reconcile the open overlays against the enabled-addon set.
+ *  Idempotent. */
 export async function syncOverlays(
   enabledAddons: readonly AddonManifest[],
-  pids: number[],
 ): Promise<void> {
-  const wanted = new Map<string, { manifest: AddonManifest; pid: number }>();
-  for (const m of enabledAddons) {
-    pids.forEach((pid) => wanted.set(overlayLabel(m.id, pid), { manifest: m, pid }));
-  }
+  const wanted = new Set(enabledAddons.map((m) => overlayLabel(m.id)));
 
   const all = await getAllWebviewWindows();
-  const existingLabels = new Set<string>();
+  const existing = new Set<string>();
   for (const w of all) {
     if (!w.label.startsWith("overlay-")) continue;
-    existingLabels.add(w.label);
+    existing.add(w.label);
     if (!wanted.has(w.label)) {
       await w.close();
     }
   }
 
-  let cascadeIndex = 0;
-  for (const [label, { manifest, pid }] of wanted) {
-    if (!existingLabels.has(label)) {
-      await spawnAddonOverlayForClient(manifest, pid, cascadeIndex);
+  for (const m of enabledAddons) {
+    if (!existing.has(overlayLabel(m.id))) {
+      await spawnAddonOverlay(m);
     }
-    cascadeIndex++;
   }
 }
 
