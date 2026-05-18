@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
@@ -40,16 +41,36 @@ export function OverlayHost({ addonId }: Props) {
   // edge.
   useDraggableWindow(shellRef);
 
-  // Clear the webview's own background paint so `background:
-  // transparent` on html/body actually shows through to whatever's
-  // behind the overlay. `transparent: true` on the window only enables
-  // per-pixel alpha at the OS level; WebView2 will still paint an
-  // opaque default-coloured background unless we explicitly null it
-  // out at runtime.
+  // Clear the webview's own background paint + force a redraw.
+  //
+  // Tauri 2 / WebView2 on Windows has a well-known bug
+  // (tauri-apps/tauri#4881, #8632, #10318): even with `transparent:
+  // true` on the window and no html/body background, the initial
+  // paint shows an opaque dark-themed surface that only clears when
+  // the window is manually resized. Calling setBackgroundColor(null)
+  // alone isn't enough — the surface needs to be re-rendered.
+  //
+  // Workaround: after clearing the webview background, nudge the
+  // window size by 1px and back. WebView2 repaints, the bug clears.
   useEffect(() => {
-    getCurrentWebview()
-      .setBackgroundColor(null)
-      .catch((e) => console.warn("[overlay] clear webview bg failed:", e));
+    const w = getCurrentWebviewWindow();
+    (async () => {
+      try {
+        await getCurrentWebview().setBackgroundColor(null);
+      } catch (e) {
+        console.warn("[overlay] clear webview bg failed:", e);
+      }
+      try {
+        const size = await w.outerSize();
+        const scale = await w.scaleFactor();
+        const wLogical = Math.round(size.width / scale);
+        const hLogical = Math.round(size.height / scale);
+        await w.setSize(new LogicalSize(wLogical + 1, hLogical));
+        await w.setSize(new LogicalSize(wLogical, hLogical));
+      } catch (e) {
+        console.warn("[overlay] redraw nudge failed:", e);
+      }
+    })();
   }, []);
 
   // Hydrate the per-addon alwaysVisible flag from the store on mount,
