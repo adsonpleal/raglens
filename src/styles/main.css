@@ -204,6 +204,22 @@ button.ghost {
   gap: 10px;
 }
 
+.addon-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #b8b8c4;
+  cursor: pointer;
+  user-select: none;
+}
+.addon-check input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #3d6e3d;
+  cursor: pointer;
+}
+
 .switch {
   position: relative;
   display: inline-block;

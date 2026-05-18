@@ -29,12 +29,14 @@ export function AddonRow({
       <div className="addon-controls">
         {enabled && (
           <>
-            <button
-              className="ghost"
-              onClick={() => onAlwaysVisibleToggle(!alwaysVisible)}
-            >
-              {alwaysVisible ? t.addons.autoVisible : t.addons.alwaysVisible}
-            </button>
+            <label className="addon-check">
+              <input
+                type="checkbox"
+                checked={alwaysVisible}
+                onChange={(e) => onAlwaysVisibleToggle(e.target.checked)}
+              />
+              <span>{t.addons.alwaysVisible}</span>
+            </label>
             <button
               className="ghost"
               onClick={() => onLockToggle(!locked)}
