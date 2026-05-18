@@ -2,9 +2,8 @@
 
 Framework de **addons em overlay** para Ragnarok Online (latamRO). Cada
 addon é uma janela pequena, sem moldura, sempre por cima e arrastável
-que você posiciona sobre o cliente do RO — estilo addons do WoW. O
-primeiro addon é um **Medidor de Experiência** (XP/min, %/min, ETA, base
-e job).
+que você posiciona sobre o cliente do RO. O primeiro addon é um
+**Medidor de Experiência** (XP/min, %/min, ETA, base e job).
 
 Somente leitura: cada byte exibido vem do servidor para o seu próprio
 cliente. Nenhum pacote é construído ou enviado, nenhum processo do RO é
