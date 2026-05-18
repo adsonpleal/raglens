@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
@@ -12,7 +11,12 @@ import {
   onForegroundChanged,
   onOverlayConfigChanged,
 } from "../lib/events";
-import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
+import {
+  enableOverlayTransparency,
+  getForegroundPid,
+  listClients,
+  raglensPid,
+} from "../lib/invoke";
 import { getOverlayAlwaysVisible } from "../lib/store";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
@@ -41,19 +45,20 @@ export function OverlayHost({ addonId }: Props) {
   // edge.
   useDraggableWindow(shellRef);
 
-  // Clear the webview's own background paint + force a redraw.
+  // Force true transparency. Tauri 2 + WebView2 on Windows has a
+  // long-standing bug (tauri-apps/tauri #4881 / #8308 / #8632 /
+  // #10318 / #12450) where `transparent: true` + CSS
+  // `background: transparent` + `setBackgroundColor(null)` still
+  // paints an opaque dark surface — even the resize-nudge workaround
+  // that worked for some users doesn't budge it here.
   //
-  // Tauri 2 / WebView2 on Windows has a well-known bug
-  // (tauri-apps/tauri#4881, #8632, #10318): even with `transparent:
-  // true` on the window and no html/body background, the initial
-  // paint shows an opaque dark-themed surface that only clears when
-  // the window is manually resized. Calling setBackgroundColor(null)
-  // alone isn't enough — the surface needs to be re-rendered.
-  //
-  // Workaround: after clearing the webview background, nudge the
-  // window size by 1px and back. WebView2 repaints, the bug clears.
+  // The reliable fix is to talk to DWM directly:
+  // `SetWindowCompositionAttribute` with `ACCENT_ENABLE_TRANSPARENT-
+  // GRADIENT` and a zero gradient colour. This is what
+  // window-vibrancy / File Explorer / Edge all do internally.
+  // Implementation is in `src-tauri/src/transparency.rs`; we call
+  // through a Tauri command with the overlay's label.
   useEffect(() => {
-    const w = getCurrentWebviewWindow();
     (async () => {
       try {
         await getCurrentWebview().setBackgroundColor(null);
@@ -61,14 +66,10 @@ export function OverlayHost({ addonId }: Props) {
         console.warn("[overlay] clear webview bg failed:", e);
       }
       try {
-        const size = await w.outerSize();
-        const scale = await w.scaleFactor();
-        const wLogical = Math.round(size.width / scale);
-        const hLogical = Math.round(size.height / scale);
-        await w.setSize(new LogicalSize(wLogical + 1, hLogical));
-        await w.setSize(new LogicalSize(wLogical, hLogical));
+        const w = getCurrentWebviewWindow();
+        await enableOverlayTransparency(w.label);
       } catch (e) {
-        console.warn("[overlay] redraw nudge failed:", e);
+        console.warn("[overlay] dwm transparency failed:", e);
       }
     })();
   }, []);
