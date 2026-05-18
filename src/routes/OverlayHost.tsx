@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
@@ -38,6 +39,18 @@ export function OverlayHost({ addonId }: Props) {
   // OS-driven drag and never offers to snap the overlay to a screen
   // edge.
   useDraggableWindow(shellRef);
+
+  // Clear the webview's own background paint so `background:
+  // transparent` on html/body actually shows through to whatever's
+  // behind the overlay. `transparent: true` on the window only enables
+  // per-pixel alpha at the OS level; WebView2 will still paint an
+  // opaque default-coloured background unless we explicitly null it
+  // out at runtime.
+  useEffect(() => {
+    getCurrentWebview()
+      .setBackgroundColor(null)
+      .catch((e) => console.warn("[overlay] clear webview bg failed:", e));
+  }, []);
 
   // Hydrate the per-addon alwaysVisible flag from the store on mount,
   // then keep it in sync with `overlay-config-changed` events emitted

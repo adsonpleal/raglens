@@ -48,6 +48,11 @@ export async function spawnAddonOverlay(
   };
   const locked = await getOverlayLocked(manifest.id);
 
+  // `backgroundColor` as a spawn option only configures the OS window
+  // background, not the webview's own paint — leaving it off here, and
+  // OverlayHost calls `getCurrentWebview().setBackgroundColor(null)` at
+  // mount time to clear the webview paint so `background: transparent`
+  // in CSS actually shows through.
   const w = new WebviewWindow(label, {
     url: `/?w=overlay&addon=${encodeURIComponent(manifest.id)}`,
     title: manifest.name,
@@ -58,13 +63,6 @@ export async function spawnAddonOverlay(
     alwaysOnTop: true,
     decorations: false,
     transparent: true,
-    // Explicitly clear the webview's own background paint. `transparent`
-    // on the window enables per-pixel alpha, but Tauri 2 / WebView2 will
-    // still paint an opaque default-coloured background unless we say
-    // otherwise. Setting RGBA = [0,0,0,0] makes the webview itself
-    // transparent and lets the body's `background: transparent` actually
-    // show through.
-    backgroundColor: [0, 0, 0, 0],
     skipTaskbar: true,
     resizable: true,
     visible: false, // OverlayHost shows itself once foreground state is known
