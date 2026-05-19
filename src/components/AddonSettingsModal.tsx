@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { getAddon } from "../addons/registry";
+import { PetFeederSettings } from "../addons/pet-feeder/PetFeederSettings";
 import { XpMeterSettings } from "../addons/xp-meter/XpMeterSettings";
 import { AppearanceSection } from "./AppearanceSection";
 
@@ -55,6 +56,7 @@ export function AddonSettingsModal({
         <AppearanceSection addonId={addonId} />
 
         {addonId === "xp-meter" && <XpMeterSettings />}
+        {addonId === "pet-feeder" && <PetFeederSettings />}
       </div>
     </div>
   );

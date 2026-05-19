@@ -22,6 +22,9 @@ pub mod aid;
 pub mod char_name;
 pub mod exp_gain;
 pub mod exp_totals;
+pub mod pet_feed;
+pub mod pet_state;
+pub mod restart;
 
 pub type DecoderFn = fn(&AppHandle, &FourTuple, Direction, &[u8]);
 
@@ -31,6 +34,10 @@ pub fn lookup(opcode: u16) -> Option<DecoderFn> {
         char_name::OPCODE => Some(char_name::decode),
         exp_gain::OPCODE => Some(exp_gain::decode),
         exp_totals::OPCODE => Some(exp_totals::decode),
+        pet_feed::OPCODE => Some(pet_feed::decode),
+        pet_state::OPCODE_INFO => Some(pet_state::decode_info),
+        pet_state::OPCODE_CHANGE => Some(pet_state::decode_change),
+        restart::OPCODE => Some(restart::decode),
         _ => None,
     }
 }

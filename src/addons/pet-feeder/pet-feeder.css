@@ -1,0 +1,146 @@
+/* Pet feeder overlay. Same Gulim+bold typography family as the XP
+ * meter so addons read as one visual family. Stage-coloured text
+ * makes the current hunger range obvious at a glance. UI scale is
+ * applied via `zoom` on the root inline-style — Chromium scales the
+ * whole layout (font, padding, gap) atomically and the overlay's
+ * ResizeObserver picks up the new height. */
+
+.pet-feeder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  font-family: "Gulim", "GulimChe", "Dotum", Tahoma, "Lucida Sans Unicode", sans-serif;
+  font-weight: bold;
+  text-shadow:
+    1px 0 0 var(--overlay-outline, #000),
+    -1px 0 0 var(--overlay-outline, #000),
+    0 1px 0 var(--overlay-outline, #000),
+    0 -1px 0 var(--overlay-outline, #000),
+    1px 1px 0 var(--overlay-outline, #000),
+    -1px 1px 0 var(--overlay-outline, #000),
+    1px -1px 0 var(--overlay-outline, #000),
+    -1px -1px 0 var(--overlay-outline, #000);
+}
+
+.pet-feeder__header {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--overlay-fg-muted, #d8d8d8);
+}
+
+.pet-feeder--waiting {
+  color: #ffb070;
+  font-style: italic;
+  font-size: 10px;
+  font-weight: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pet-feeder__row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.pet-feeder__row--primary {
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.pet-feeder__name {
+  font-size: 11px;
+  color: var(--overlay-fg, #ffffff);
+}
+
+.pet-feeder__stage {
+  letter-spacing: 0.02em;
+}
+
+.pet-feeder__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.pet-feeder__timer {
+  justify-content: space-between;
+  font-size: 11px;
+}
+.pet-feeder__timer-label {
+  color: var(--overlay-fg-muted, #d8d8d8);
+}
+.pet-feeder__timer-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--overlay-fg, #ffffff);
+}
+.pet-feeder__timer-value--calc {
+  /* "Calculando…" is longer than a duration like "3m 14s"; shrink
+   * + italicise it so the right edge doesn't push the overlay
+   * wider than the user sized it. Dim color reinforces "not real
+   * data yet". */
+  font-size: 9px;
+  font-style: italic;
+  color: var(--overlay-fg-muted, #d8d8d8);
+}
+
+.pet-feeder__meta {
+  font-size: 10px;
+  color: var(--overlay-fg-muted, #d8d8d8);
+  flex-wrap: wrap;
+  /* When both chips render, push ♥ to the right edge for symmetry
+   * with the Estágio/valor row. With only one chip, space-between
+   * is a no-op so the single chip stays at the left. */
+  justify-content: space-between;
+}
+
+.pet-feeder__chip {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stage colours. Match the in-game pet-window vibe: red when about to
+ * lose intimacy, green when feeding is optimal, blue tones for "no
+ * benefit but no penalty". */
+.pet-feeder--faminto .pet-feeder__stage,
+.pet-feeder--faminto .pet-feeder__value {
+  color: #ff6060;
+}
+.pet-feeder--fome .pet-feeder__stage,
+.pet-feeder--fome .pet-feeder__value {
+  color: #ffaa55;
+}
+.pet-feeder--nenhuma .pet-feeder__stage,
+.pet-feeder--nenhuma .pet-feeder__value {
+  color: #80f080;
+}
+.pet-feeder--satisfeito .pet-feeder__stage,
+.pet-feeder--satisfeito .pet-feeder__value {
+  color: #80c0ff;
+}
+.pet-feeder--cheio .pet-feeder__stage,
+.pet-feeder--cheio .pet-feeder__value {
+  color: #c8a8ff;
+}
+
+/* Optimal-feed window: subtle green pulse to flag "feed now". */
+.pet-feeder--alert {
+  animation: pet-feeder-blink 1.2s ease-in-out infinite;
+}
+@keyframes pet-feeder-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+/* Danger zone (Faminto / Fome): harder shake so the user can't miss
+ * it. Different cadence from the optimal blink to make the two
+ * states visually distinct. */
+.pet-feeder--danger {
+  animation: pet-feeder-shake 0.5s ease-in-out infinite;
+}
+@keyframes pet-feeder-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}

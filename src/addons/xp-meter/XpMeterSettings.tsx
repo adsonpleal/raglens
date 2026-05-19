@@ -146,6 +146,24 @@ export function XpMeterSettings() {
           ))}
         </ul>
       </section>
+
+      <section className="modal-section">
+        <h3>Tamanho da interface</h3>
+        <label className="modal-label">
+          Escala: {Math.round(config.uiScale * 100)}%
+        </label>
+        <input
+          type="range"
+          min={50}
+          max={200}
+          step={5}
+          className="appearance-slider"
+          value={Math.round(config.uiScale * 100)}
+          onChange={(e) =>
+            void update({ uiScale: parseInt(e.target.value, 10) / 100 })
+          }
+        />
+      </section>
     </>
   );
 }

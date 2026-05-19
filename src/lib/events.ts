@@ -3,10 +3,13 @@ import type { OverlayAppearance } from "./appearance";
 import type {
   CaptureStats,
   ClientDetected,
+  ClientReset,
   ClientUpdate,
   ExpGain,
   ExpTotalUpdate,
   ForegroundChanged,
+  PetFedRequest,
+  PetStateUpdate,
   SelectedClient,
 } from "./types";
 
@@ -89,4 +92,24 @@ export function onExpTotal(
   handler: (update: ExpTotalUpdate) => void,
 ): Promise<UnlistenFn> {
   return listen<ExpTotalUpdate>("packet:exp-totals", (e) => handler(e.payload));
+}
+
+export function onPetState(
+  handler: (update: PetStateUpdate) => void,
+): Promise<UnlistenFn> {
+  return listen<PetStateUpdate>("packet:pet-state", (e) => handler(e.payload));
+}
+
+export function onPetFedRequest(
+  handler: (event: PetFedRequest) => void,
+): Promise<UnlistenFn> {
+  return listen<PetFedRequest>("packet:pet-fed-request", (e) =>
+    handler(e.payload),
+  );
+}
+
+export function onClientReset(
+  handler: (event: ClientReset) => void,
+): Promise<UnlistenFn> {
+  return listen<ClientReset>("client-reset", (e) => handler(e.payload));
 }

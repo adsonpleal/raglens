@@ -45,6 +45,8 @@
   justify-content: center;
   color: #ffb070;
   font-style: italic;
+  font-size: 10px;
+  font-weight: normal;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

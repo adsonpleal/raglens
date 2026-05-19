@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAddonConfig } from "../../hooks/useAddonConfig";
+import { useScaleAspectRatio } from "../../hooks/useScaleAspectRatio";
 import type { ClientInfo } from "../../lib/types";
 import { xpMeterDefaultConfig, xpMeterRowLabels } from "./config";
 import {
@@ -29,6 +30,7 @@ type Props = {
 export function XpMeter({ pid, client: _client }: Props) {
   const { samples, totals, hasEverReceived } = useXpEvents(pid);
   const config = useAddonConfig("xp-meter", xpMeterDefaultConfig);
+  useScaleAspectRatio(config.uiScale);
   const labels = useMemo(() => xpMeterRowLabels(config.windowMs), [config.windowMs]);
 
   // Re-render every second so the rolling-window calcs stay fresh
@@ -99,7 +101,7 @@ export function XpMeter({ pid, client: _client }: Props) {
   // not the waiting state, so disconnect/reconnect doesn't make
   // the apparent overlay height jump around.
   return (
-    <div className="xp-meter">
+    <div className="xp-meter" style={{ zoom: config.uiScale }}>
       <dl
         className="xp-meter__rows"
         style={{ visibility: hasEverReceived ? "visible" : "hidden" }}

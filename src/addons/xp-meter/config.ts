@@ -11,6 +11,10 @@ export type XpMeterConfig = {
   showJobEta: boolean;
   /** Rolling window (in ms) used for the XP/min and ETA calcs. */
   windowMs: number;
+  /** Overall UI scale (1 = 100%). Applied via CSS `zoom` on the
+   *  overlay root so font, padding and gaps scale together and the
+   *  overlay's auto-height lock picks up the new content size. */
+  uiScale: number;
 };
 
 export const xpMeterDefaultConfig: XpMeterConfig = {
@@ -21,6 +25,7 @@ export const xpMeterDefaultConfig: XpMeterConfig = {
   showBaseEta: true,
   showJobEta: true,
   windowMs: 5 * 60_000,
+  uiScale: 1,
 };
 
 /** Allowed window values for the radio group in the settings modal.
@@ -39,8 +44,11 @@ export const xpMeterWindowOptions: ReadonlyArray<{
 ];
 
 /** Boolean keys in `XpMeterConfig` — i.e. the per-row visibility
- *  flags. Excludes `windowMs` (number). */
-export type XpMeterRowKey = Exclude<keyof XpMeterConfig, "windowMs">;
+ *  flags. Excludes the numeric fields. */
+export type XpMeterRowKey = Exclude<
+  keyof XpMeterConfig,
+  "windowMs" | "uiScale"
+>;
 
 /** Compact suffix used in row labels — e.g. "5min" or "1h". The
  *  XP/% rows append this to communicate "value is summed over the

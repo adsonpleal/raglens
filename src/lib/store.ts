@@ -149,3 +149,37 @@ export async function setDismissedUpdateVersion(version: string): Promise<void> 
   await store.set("app.dismissedUpdateVersion", version);
   await store.save();
 }
+
+/** Discrete tick model for a pet type: how many hunger points the
+ *  server decrements per hungry tick, and how often the tick fires.
+ *  Modelled as `{intervalMs, dropPerTick}` rather than a single
+ *  points/sec rate because the on-the-wire behaviour is a step
+ *  function — hunger sits at a value for the full interval, then
+ *  jumps down by `dropPerTick` in one packet (latamRO observed:
+ *  3 pts every 60s, so hunger goes 79 → 76 → 73, never landing on
+ *  intermediate values). A continuous-rate model underestimates the
+ *  time to the next stage transition because it assumes hunger drifts
+ *  smoothly across the threshold, when in reality the next packet
+ *  always arrives one full tick after the previous one — and that
+ *  packet may overshoot the threshold by up to `dropPerTick - 1`
+ *  points. Per-pet because rAthena's `HungryDelay` is configured per
+ *  pet type — Porings ≠ Mastering ≠ latamRO's custom values.
+ *  Persisted across sessions so each pet type's "Até ideal" countdown
+ *  is accurate on first render. See
+ *  https://github.com/rathena/rathena/blob/master/db/re/pet_db.yml */
+export type PetTickModel = { intervalMs: number; dropPerTick: number };
+export type PetHungerTicks = Record<string, PetTickModel>;
+
+export async function getPetHungerTicks(): Promise<PetHungerTicks> {
+  return (await store.get<PetHungerTicks>("addon.pet-feeder.ticks")) ?? {};
+}
+
+export async function setPetHungerTick(
+  petType: number,
+  model: PetTickModel,
+): Promise<void> {
+  const ticks = await getPetHungerTicks();
+  ticks[String(petType)] = model;
+  await store.set("addon.pet-feeder.ticks", ticks);
+  await store.save();
+}

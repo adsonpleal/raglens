@@ -11,6 +11,7 @@ dist
 .idea
 .DS_Store
 Thumbs.db
+.claude/
 
 # Tauri build output
 src-tauri/target

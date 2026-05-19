@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { UnlistenFn } from "@tauri-apps/api/event";
-import { onExpGain, onExpTotal } from "../../lib/events";
+import { onClientReset, onExpGain, onExpTotal } from "../../lib/events";
 import type { ExpField, ExpGain } from "../../lib/types";
 import type { ExpSample } from "./format";
 
@@ -84,6 +84,20 @@ export function useXpEvents(pid: number): XpEventsState {
     onExpTotal((update) => {
       if (update.pid !== pid) return;
       setTotals((prev) => applyTotal(prev, update.field, update.value));
+    }).then((u) => {
+      if (cancelled) u();
+      else unsubs.push(u);
+    });
+
+    // Going back to char select / quitting wipes the running session
+    // so the next character doesn't inherit this one's XP samples.
+    onClientReset((evt) => {
+      if (evt.pid !== pid) return;
+      setSamples([]);
+      setTotals({ base: null, job: null, nextBase: null, nextJob: null });
+      setLastGain(null);
+      setHasEverReceived(false);
+      hasEverReceivedRef.current = false;
     }).then((u) => {
       if (cancelled) u();
       else unsubs.push(u);

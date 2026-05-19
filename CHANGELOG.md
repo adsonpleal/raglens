@@ -7,6 +7,48 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-05-18
+
+### Adicionado
+
+- Novo addon **Mascote (pet-feeder)**: overlay que mostra fome,
+  intimidade, nível e nome do pet, com contagem regressiva até a
+  próxima troca de estado. A cadência é descoberta na primeira
+  observação de queda natural e persistida por `petType` em
+  `raglens.json`, então sessões seguintes começam com o timer
+  certo desde o primeiro frame. O cálculo trata o decremento como
+  evento discreto (no latamRO, `3 pts a cada 60s` para o pet
+  observado): `ticksNeeded = ceil((hunger - threshold) / dropPerTick)`,
+  e ignora o primeiro tick pós-alimentação porque o servidor
+  reagenda o `HungryDelay` no momento da comida e a janela fica
+  irregular.
+- Alertas sonoros configuráveis em duas situações: entrada na
+  **zona ideal** (fome em 26–75, oportunidade de loyalty) e
+  entrada na **zona de perigo** (fome ≤ 25, pet pode fugir).
+  Cada alerta pode ser one-shot ou em loop e usa um som da
+  biblioteca embutida ou um arquivo `.wav`/`.mp3` importado pelo
+  usuário.
+- Evento `client-reset` (back-to-char-select / quit), com os
+  addons resetando o snapshot por PID na transição — o personagem
+  seguinte não herda dados (fome, intimidade, samples de XP) do
+  anterior.
+- Configuração de **Escala da interface** (50%-200%) no addon do
+  XP meter, igual à que o pet-feeder já tinha, via `zoom` no root
+  do overlay e re-lock automático da altura.
+
+### Mudanças internas
+
+- `formatDuration` virou utilitário compartilhado em
+  `src/lib/format.ts` e o xp-meter passou a re-exportar dele em
+  vez de manter um fork — segundos agora são sempre `padStart(2)`
+  no overlay (largura estável durante a contagem).
+- Logger de opcodes (`RAGLENS_LOG_OPCODES=1`) anota cada pacote
+  de pet (`0x01a2` / `0x01a3` / `0x01a4` / `0x01a9`) com uma
+  linha `[pet] ...` carregando `dt`, `drop`, `interval`,
+  `per_tick`, `countdown` e marcadores `post_fed=armed|consumed`,
+  para conferir o estado do timer do overlay contra o que
+  realmente chega no fio.
+
 ## [0.1.5] - 2026-05-18
 
 ### Adicionado

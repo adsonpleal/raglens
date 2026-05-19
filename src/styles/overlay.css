@@ -11,6 +11,11 @@ body,
   line-height: 1.25;
   user-select: none;
   cursor: default;
+  /* Overlays auto-size their window to content height via a
+   * ResizeObserver lock; a webview-side scrollbar should never
+   * appear. `overflow: hidden` suppresses the transient scrollbar
+   * during the millisecond between mount and the first lock fire. */
+  overflow: hidden;
 }
 
 .overlay-shell {

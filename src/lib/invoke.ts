@@ -36,3 +36,19 @@ export function getForegroundPid(): Promise<number | null> {
 export function raglensPid(): Promise<number> {
   return invoke("raglens_pid");
 }
+
+/** Latest pet snapshot the backend has captured for this PID, or null
+ *  if nothing observed yet. Used by the pet-feeder hook to hydrate
+ *  the overlay immediately when it mounts mid-session, instead of
+ *  waiting on the next 0x01a4 tick. */
+export type CachedPetState = {
+  hunger: number | null;
+  intimacy: number | null;
+  level: number | null;
+  name: string | null;
+  petType: number | null;
+};
+
+export function getPetState(pid: number): Promise<CachedPetState | null> {
+  return invoke("get_pet_state", { pid });
+}

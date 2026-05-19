@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { PetFeeder } from "../addons/pet-feeder/PetFeeder";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
 import { getAddon } from "../addons/registry";
 import { useDraggableWindow } from "../hooks/useDraggableWindow";
@@ -30,6 +31,7 @@ const ADDON_COMPONENTS: Record<
   React.FC<{ pid: number; client: ClientInfo | null }>
 > = {
   "xp-meter": XpMeter,
+  "pet-feeder": PetFeeder,
 };
 
 export function OverlayHost({ addonId }: Props) {
@@ -121,18 +123,26 @@ export function OverlayHost({ addonId }: Props) {
   // Lock the window's height to its content. The user can resize
   // horizontally; vertical resize is blocked by setting min/max
   // height to the same value (the OS enforces the constraint).
+  //
+  // We use a "drain" loop instead of a single in-flight flag: the
+  // ResizeObserver only updates a pending target, and a single
+  // drain task runs locks until pending == lastLocked. Without this,
+  // a rapid sequence — placeholder height → real content height
+  // arriving milliseconds later from the hydrate path — could land
+  // the second fire while a lock is in flight, drop it, and leave
+  // the window stuck at the placeholder height with a webview-side
+  // scrollbar over the overflowing content.
   useEffect(() => {
     const el = shellRef.current;
     if (!el) return;
 
     let cancelled = false;
-    let inFlight = false;
+    let pendingHeight = 0;
     let lastLockedHeight = 0;
+    let draining = false;
     const w = getCurrentWebviewWindow();
 
-    const lock = async (height: number) => {
-      if (cancelled || height <= 0 || height === lastLockedHeight) return;
-      lastLockedHeight = height;
+    const lock = async (height: number): Promise<void> => {
       try {
         await w.setMinSize(new LogicalSize(80, height));
         await w.setMaxSize(new LogicalSize(4096, height));
@@ -148,17 +158,30 @@ export function OverlayHost({ addonId }: Props) {
       }
     };
 
+    const drain = async () => {
+      if (draining || cancelled) return;
+      draining = true;
+      // Re-check after each lock — if a new fire updated pending
+      // while we were locking, run again with the latest target.
+      while (
+        !cancelled &&
+        pendingHeight > 0 &&
+        pendingHeight !== lastLockedHeight
+      ) {
+        const target = pendingHeight;
+        await lock(target);
+        lastLockedHeight = target;
+      }
+      draining = false;
+    };
+
     const observer = new ResizeObserver((entries) => {
-      if (inFlight) return;
       const entry = entries[0];
       if (!entry) return;
-      const h = Math.ceil(
+      pendingHeight = Math.ceil(
         entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height,
       );
-      inFlight = true;
-      void lock(h).finally(() => {
-        inFlight = false;
-      });
+      void drain();
     });
     observer.observe(el);
 

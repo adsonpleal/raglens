@@ -57,6 +57,13 @@ pub fn dispatch_packet(
                 // Unknown length and the offset-2 fallback didn't yield
                 // anything sensible. Bailing on this segment is safer
                 // than guessing and feeding decoders garbage payloads.
+                // Surface a BAIL line in the logger (if enabled) so we
+                // can identify which opcode is blocking us.
+                if followed {
+                    if let Some(l) = logger.as_mut() {
+                        let _ = l.log_bail(ft, direction, opcode, remaining);
+                    }
+                }
                 eprintln!(
                     "[dispatch] stopping segment walk at offset {offset}: unknown length for opcode 0x{opcode:04x} (remaining={} bytes)",
                     remaining.len()
@@ -103,14 +110,22 @@ fn fixed_packet_length(opcode: u16) -> Option<usize> {
         0x0087 => 12,  // ZC_NOTIFY_PLAYERMOVE
         0x0088 => 10,  // ZC_STOPMOVE
         0x0091 => 22,  // ZC_NPCACK_MAPMOVE
+        0x0095 => 30,  // ZC_ACK_REQNAME (entity GID + 24-byte name)
         0x009c => 9,   // ZC_CHANGE_DIRECTION
         0x00a1 => 6,   // ZC_ITEM_DISAPPEAR
         0x00b0 => 8,   // ZC_PAR_CHANGE (i32 PARAMCHANGE)
         0x00b1 => 8,   // ZC_LONGPAR_CHANGE (legacy)
+        0x00b3 => 3,   // ZC_RESTART_ACK (back-to-char-select / quit ack)
         0x00bd => 44,  // ZC_STATUS
         0x00c0 => 7,   // ZC_EMOTION
         0x0196 => 9,   // ZC_STATUS_CHANGE
-        0x01aa => 10,  // ZC_EMOTION_2
+        0x01a1 => 3,   // CZ_COMMAND_PET (pet menu choice C->S)
+        0x01a2 => 37,  // ZC_PROPERTY_PET (name + renameflag + level + hungry + intimacy + accessory + type)
+        0x01a3 => 5,   // ZC_FEED_PET (success + foodID)
+        0x01a4 => 11,  // ZC_CHANGESTATE_PET (type + GID + value)
+        0x01a5 => 26,  // CZ_RENAME_PET (C->S new name 24b)
+        0x01a9 => 6,   // CZ_USE_ITEM_ON_PET (C->S send pet emotion / feed signature)
+        0x01aa => 10,  // ZC_PET_ACT / pet_emotion (GID + effectId)
         0x01c8 => 18,  // ZC_USE_ITEM_ACK
         0x01d6 => 4,   // ZC_NPCACK_ENABLE
         0x01d7 => 11,  // ZC_SPRITE_CHANGE2

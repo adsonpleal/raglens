@@ -45,6 +45,14 @@ export type SelectedClient = {
   pid: number | null;
 };
 
+/** Fired when the server acknowledges a "back to char select" or
+ *  "quit" action for the owning PID. Hooks reset their per-character
+ *  state on this so the next session doesn't inherit the previous
+ *  character's samples / pet snapshot. */
+export type ClientReset = {
+  pid: number | null;
+};
+
 export type ExpKind = "base" | "job";
 
 export type ExpGain = {
@@ -66,6 +74,31 @@ export type ExpTotalUpdate = {
   aid: number | null;
   field: ExpField;
   value: number;
+};
+
+/** Partial pet state update from `packet:pet-state`. Fields are
+ *  optional because the two source opcodes carry different subsets:
+ *  `0x01a4` (state-change tick) → one of hunger/intimacy at a time;
+ *  `0x01a2` (full info snapshot) → all four plus `petType`. The hook
+ *  merges successive updates into the current view. */
+export type PetStateUpdate = {
+  pid: number | null;
+  hunger?: number;
+  intimacy?: number;
+  level?: number;
+  name?: string;
+  /** Pet sprite id (rAthena pet_db key). Carried only by the
+   *  0x01a2 snapshot; used to key per-pet-type hunger-decay rate
+   *  caching since rAthena's `HungryDelay` varies per pet. */
+  petType?: number;
+};
+
+/** Fired when the player clicks "Alimentar" in the in-game pet menu.
+ *  The overlay uses this to apply an optimistic hunger bump on the
+ *  same tick the click happens — the server's 0x01a4 confirmation
+ *  arrives anywhere from a few hundred ms to ~3s later. */
+export type PetFedRequest = {
+  pid: number | null;
 };
 
 export type CaptureStats = {

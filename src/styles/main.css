@@ -344,6 +344,14 @@ button.ghost {
   justify-content: space-between;
   padding: 14px 18px;
   border-bottom: 1px solid #2a2a36;
+  /* Stick the title + close button to the top so the body can scroll
+   * underneath them. Matches the modal's background so scrolled
+   * content doesn't bleed through. z-index keeps it above selects /
+   * the close button focus ring. */
+  position: sticky;
+  top: 0;
+  background: #1a1a22;
+  z-index: 2;
 }
 .modal-header h2 {
   font-size: 14px;
@@ -495,6 +503,41 @@ button.ghost {
   accent-color: #6ea8ff;
 }
 .appearance-slider:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.modal-label {
+  font-size: 12px;
+  color: #b8b8c4;
+}
+
+.modal-sound-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+}
+.modal-sound-loop {
+  font-size: 12px;
+  margin-left: 98px; /* line up under the sound dropdown, past the label column */
+}
+.modal-sound-label {
+  font-size: 12px;
+  color: #b8b8c4;
+  min-width: 92px;
+}
+.modal-select {
+  flex: 1;
+  background: #14141a;
+  border: 1px solid #2a2a36;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+}
+.modal-select:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }

@@ -6,7 +6,9 @@ mod foreground;
 mod interfaces;
 mod logger;
 mod packet;
+mod pet_state_store;
 mod process;
+mod sounds;
 
 use capture::CaptureState;
 use connections::ConnectionsState;
@@ -48,6 +50,7 @@ pub fn run() {
         .manage(CaptureState::default())
         .manage(ConnectionsState::default())
         .manage(ForegroundWatcherState::default())
+        .manage(pet_state_store::PetStateStore::default())
         .setup(|app| {
             // Kick the foreground watcher as soon as the app is up. It
             // emits foreground-changed events for the lifetime of the
@@ -66,6 +69,10 @@ pub fn run() {
             connections::get_selected_pid,
             foreground::get_foreground_pid,
             raglens_pid,
+            pet_state_store::get_pet_state,
+            sounds::import_sound,
+            sounds::list_sounds,
+            sounds::read_sound,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
