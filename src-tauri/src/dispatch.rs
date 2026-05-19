@@ -138,6 +138,16 @@ fn fixed_packet_length(opcode: u16) -> Option<usize> {
         0x0283 => 6,   // ZC_AID
         0x02eb => 13,  // ZC_ACCEPT_ENTER2
         0x043f => 25,  // ZC_MSG_STATE_CHANGE
+        0x07fa => 8,   // bundled-state-update wrapper (latamRO): 8-byte
+                       // header followed by zero or more inner Ragnarok
+                       // packets (0x00b0 stat updates, 0x01a4 pet-state,
+                       // 0x01a3 feed-ack). Header always starts
+                       // `fa 07 00 00 5x 00 01 00`; the `00 00` at
+                       // offset 2-3 makes the variable-length fallback
+                       // fail, so without a fixed entry the dispatcher
+                       // BAILs and drops the inner packets — which
+                       // breaks pet-state updates whenever a feed
+                       // response arrives bundled.
         0x07fb => 25,  // ZC_USE_SKILL2
         0x099b => 8,   // ZC_MAPPROPERTY_R2
         0x0984 => 6,   // ZC_MSG_SKILL

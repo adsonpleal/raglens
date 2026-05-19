@@ -34,6 +34,14 @@ type Props = {
 // raglens.json. After that, subsequent sessions of the same pet
 // start the countdown accurate from frame zero.
 
+// How long the "fed" notification waits before firing. A feed
+// produces up to three hunger / intimacy updates in quick succession
+// (optimistic bump, server-confirmed hunger, server intimacy packet);
+// holding briefly lets them coalesce so the toast reflects the final
+// post-feed loyalty instead of firing once with the old value and
+// again with the new.
+const FED_NOTIFICATION_DEBOUNCE_MS = 800;
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function PetFeeder({ pid, client: _client }: Props) {
   const config = useAddonConfig("pet-feeder", petFeederDefaultConfig);
@@ -55,6 +63,18 @@ export function PetFeeder({ pid, client: _client }: Props) {
   // loyalty still fire — the server skips the intimacy packet when
   // there's nothing to add.
   const prevHungerRef = useRef<number | null>(null);
+  // Always-fresh intimacy, read by the debounced "fed" notification
+  // so the toast carries the post-feed loyalty even when the intimacy
+  // packet arrives after the optimistic hunger bump.
+  const intimacyRef = useRef<number | null>(null);
+  intimacyRef.current = intimacy;
+  const fedTimerRef = useRef<number | null>(null);
+  const clearFedTimer = () => {
+    if (fedTimerRef.current !== null) {
+      window.clearTimeout(fedTimerRef.current);
+      fedTimerRef.current = null;
+    }
+  };
   // Active looping alert sounds — kept so we can stop them on stage
   // exit, on unmount, or when the user mutes the addon.
   const optimalLoopRef = useRef<SoundHandle | null>(null);
@@ -65,6 +85,7 @@ export function PetFeeder({ pid, client: _client }: Props) {
   useEffect(() => {
     prevStageRef.current = null;
     prevHungerRef.current = null;
+    clearFedTimer();
   }, [petType]);
 
   // Re-render every second so the countdown stays accurate even when
@@ -83,6 +104,7 @@ export function PetFeeder({ pid, client: _client }: Props) {
       optimalLoopRef.current = null;
       dangerLoopRef.current?.stop();
       dangerLoopRef.current = null;
+      clearFedTimer();
     };
   }, []);
 
@@ -169,17 +191,24 @@ export function PetFeeder({ pid, client: _client }: Props) {
   ]);
 
   // Pet-fed detection: any *increase* in hunger means the user just
-  // fed (the optimistic bump and the server's confirmation both
-  // advance the anchor, so this fires once per feed).
+  // fed. The optimistic bump and the server's hunger confirmation
+  // each register as an increase, and the intimacy packet arrives on
+  // its own — so we debounce the notification to coalesce them into a
+  // single fire that uses the freshest intimacy (read via ref).
   useEffect(() => {
     if (hunger === null) return;
     const prev = prevHungerRef.current;
     prevHungerRef.current = hunger;
     if (prev === null || hunger <= prev) return;
-    dispatchPetNotification("fed", config, { newIntimacy: intimacy ?? 0 });
+    clearFedTimer();
+    fedTimerRef.current = window.setTimeout(() => {
+      fedTimerRef.current = null;
+      dispatchPetNotification("fed", config, {
+        newIntimacy: intimacyRef.current ?? 0,
+      });
+    }, FED_NOTIFICATION_DEBOUNCE_MS);
   }, [
     hunger,
-    intimacy,
     config.pushEnabled,
     config.pushNtfyTopic,
     config.winEnabled,

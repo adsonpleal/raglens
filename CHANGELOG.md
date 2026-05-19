@@ -7,6 +7,31 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-05-19
+
+### Corrigido
+
+- **Notificação "Mascote alimentado" duplicada**: o evento `fed` do
+  pet-feeder disparava duas vezes por alimentação — primeiro com a
+  lealdade antiga e logo depois com a nova. O bump otimista de fome,
+  a confirmação do servidor e o pacote de intimidade chegam como três
+  updates separados (e em qualquer ordem entre si), então o efeito de
+  detecção via `hunger > prev` registrava dois aumentos. Adicionado
+  debounce de 800ms em `PetFeeder.tsx` que coalesce todos os updates
+  de uma mesma alimentação numa única notificação, lendo a intimidade
+  via ref no momento do disparo — sempre carrega a lealdade pós-feed.
+- **Pacotes de pet perdidos quando o servidor empacota a resposta**:
+  o dispatcher derrubava silenciosamente bundles que chegavam dentro
+  de um wrapper `0x07fa` (8 bytes de header `fa 07 00 00 5x 00 01 00`
+  seguidos de zero ou mais sub-pacotes `0x00b0`/`0x01a4`/`0x01a3`),
+  porque o fallback de variable-length lia `00 00` no offset 2-3 e
+  caía no BAIL — descartando junto os sub-pacotes do bundle. Sem o
+  `0x01a4` de hunger / intimidade chegando, o overlay nunca via a
+  confirmação do servidor e o próximo tick de fome (~30s depois)
+  parecia uma nova alimentação. `0x07fa` registrado como opcode de
+  comprimento fixo de 8 bytes em `dispatch.rs`: o walker consome só
+  o header e segue despachando os pacotes internos normalmente.
+
 ## [0.1.8] - 2026-05-19
 
 ### Adicionado
@@ -414,7 +439,8 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.8...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/adsonpleal/raglens/compare/v0.1.8...v0.1.9
 [0.1.8]: https://github.com/adsonpleal/raglens/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/adsonpleal/raglens/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/adsonpleal/raglens/compare/v0.1.5...v0.1.6
