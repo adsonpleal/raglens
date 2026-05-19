@@ -2,8 +2,10 @@
 
 Framework de **addons em overlay** para Ragnarok Online (latamRO). Cada
 addon é uma janela pequena, sem moldura, sempre por cima e arrastável
-que você posiciona sobre o cliente do RO. O primeiro addon é um
-**Medidor de Experiência** (XP/min, %/min, ETA, base e job).
+que você posiciona sobre o cliente do RO. Vem com dois addons: um
+**Medidor de Experiência** (XP/min, %/min, ETA, base e job) e
+**Informações de Mascote** (fome / intimidade / nível, contagem
+regressiva até a faixa ideal e alertas sonoros).
 
 Somente leitura: cada byte exibido vem do servidor para o seu próprio
 cliente. Nenhum pacote é construído ou enviado, nenhum processo do RO é
@@ -11,7 +13,7 @@ modificado.
 
 ## ⬇ Download
 
-[**raglens-v0.1.5-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.5-setup.exe)
+[**raglens-v0.1.6-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.6-setup.exe)
 — instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
 embutido; basta executar e seguir o instalador. O Raglens é configurado
 para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
@@ -44,7 +46,8 @@ do arquivo baixado com o `SHA256SUMS.txt` da mesma release.
 
 | Addon | Descrição | Status |
 |---|---|---|
-| **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 min / 5 min / 15 min / 30 min / 1 h). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
+| **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 / 3 / 5 / 15 / 30 / 60 min ou personalizado). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
+| **Informações de Mascote** | Mostra fome, intimidade, nível e nome do pet. A contagem regressiva até a próxima troca de estado é calibrada por `petType` a partir da primeira queda observada (modelo de tick discreto, persistido em `raglens.json`) — sessões seguintes começam com o timer certo desde o primeiro frame. Alertas sonoros (one-shot ou em loop, com som da biblioteca embutida ou `.wav`/`.mp3` importado) na entrada da faixa ideal (26–75, oportunidade de loyalty) e da zona de perigo (≤ 25, pet pode fugir). Atalho global padrão `Alt+Shift+J`. | Funcional |
 
 A lista cresce; cada addon vive em `src/addons/<id>/` com seu manifesto,
 componente React e (quando aplicável) decodificador em
@@ -125,9 +128,9 @@ servidores precisariam de ajustes.
 
 Cada addon tem um atalho global configurável — pressionar a combinação
 em qualquer janela (incluindo o cliente do RO) alterna a visibilidade
-do overlay. Para o Medidor de Experiência o padrão é `Alt+Shift+E`. Você
-pode trocar a combinação clicando em **Configurar** ao lado do addon
-em Raglens.
+do overlay. Os padrões: `Alt+Shift+E` para o Medidor de Experiência e
+`Alt+Shift+J` para Informações de Mascote. Você pode trocar a
+combinação clicando em **Configurar** ao lado do addon em Raglens.
 
 A janela principal de Raglens também tem dois toggles por addon:
 
@@ -276,11 +279,13 @@ Saída em `src-tauri/target/release/bundle/nsis/*-setup.exe`.
 6. Arraste/redimensione o overlay até onde quiser.
 7. Marque **Travado** quando estiver satisfeito; o overlay vira
    click-through e não atrapalha mais o jogo.
-8. Pressione o atalho do addon (`Alt+Shift+E` no caso do XP meter) pra
-   mostrar/esconder em qualquer momento, mesmo com o jogo em foco.
+8. Pressione o atalho do addon (`Alt+Shift+E` para o XP meter,
+   `Alt+Shift+J` para o pet-feeder) pra mostrar/esconder em qualquer
+   momento, mesmo com o jogo em foco.
 9. Clique em **Configurar** ao lado do addon pra abrir o modal de
-   configuração — atalho de teclado, janela de tempo (para o XP meter),
-   linhas exibidas, etc.
+   configuração — atalho de teclado, janela de tempo (XP meter),
+   sons de alerta (pet-feeder), linhas exibidas, escala da
+   interface, etc.
 
 ## Estrutura do projeto
 
@@ -293,21 +298,30 @@ raglens/
 │   │   └── OverlayHost.tsx    Shell de overlay; monta o addon
 │   ├── addons/
 │   │   ├── types.ts
-│   │   ├── registry.ts        ADDONS = [xpMeterManifest]
-│   │   └── xp-meter/
+│   │   ├── registry.ts        ADDONS = [xpMeterManifest, petFeederManifest]
+│   │   ├── xp-meter/
+│   │   │   ├── manifest.ts
+│   │   │   ├── config.ts      Tipos e defaults da config do addon
+│   │   │   ├── XpMeter.tsx
+│   │   │   ├── XpMeterSettings.tsx  Conteúdo do modal Configurar
+│   │   │   ├── useXpEvents.ts Inscrito em packet:exp-gain / exp-totals
+│   │   │   └── format.ts      Vitest cobre xpPerMinute, ETA, formatação
+│   │   └── pet-feeder/
 │   │       ├── manifest.ts
-│   │       ├── config.ts      Tipos e defaults da config do addon
-│   │       ├── XpMeter.tsx
-│   │       ├── XpMeterSettings.tsx  Conteúdo do modal Configurar
-│   │       ├── useXpEvents.ts Inscrito em packet:exp-gain / exp-totals
-│   │       └── format.ts      Vitest cobre xpPerMinute, ETA, formatação
+│   │       ├── config.ts      Defaults: sons, alertas, escala, visibilidade
+│   │       ├── PetFeeder.tsx
+│   │       ├── PetFeederSettings.tsx
+│   │       ├── usePetState.ts Inscrito em packet:pet-state + onPetFedRequest
+│   │       ├── sounds.ts      Catálogo embutido + import de .wav/.mp3
+│   │       └── format.ts      Stage classifier + HUNGER thresholds (vitest)
 │   ├── components/            NicPicker, ClientPicker, AddonRow,
 │   │                          AddonSettingsModal
 │   ├── hooks/                 useCaptureSession, useClients,
 │   │                          useSelectedPid, useAddonState,
 │   │                          useAddonShortcuts, useAddonConfig,
-│   │                          useDraggableWindow
+│   │                          useDraggableWindow, useScaleAspectRatio
 │   ├── lib/                   invoke / events / store / overlays / types
+│   │   └── format.ts          formatDuration compartilhado (vitest)
 │   ├── i18n/pt-br.ts          Strings centralizadas
 │   └── styles/                main.css, overlay.css
 ├── src-tauri/                 Backend Rust
@@ -321,13 +335,18 @@ raglens/
 │   │   ├── process.rs         PID via GetExtendedTcpTable, info do .exe
 │   │   ├── foreground.rs      Watcher de foreground (poll 150 ms)
 │   │   ├── dispatch.rs        Walker de segmento + lookup de decoder
-│   │   ├── logger.rs          Logger dev de opcodes
+│   │   ├── logger.rs          Logger dev de opcodes + anotação [pet]
+│   │   ├── pet_state_store.rs Cache backend do snapshot do pet por PID
+│   │   ├── sounds.rs          Comandos pra importar/listar sons do addon
 │   │   └── decoders/
 │   │       ├── mod.rs         lookup(opcode) -> Option<DecoderFn>
 │   │       ├── aid.rs         ZC_AID (0x0283)
 │   │       ├── char_name.rs   ZC_ACK_REQNAME_TITLE (0x0a30)
 │   │       ├── exp_gain.rs    ZC_NOTIFY_EXP (0x0acc)
-│   │       └── exp_totals.rs  ZC_LONGPAR_CHANGE (0x0acb)
+│   │       ├── exp_totals.rs  ZC_LONGPAR_CHANGE (0x0acb)
+│   │       ├── pet_state.rs   ZC_PROPERTY_PET (0x01a2) + ZC_CHANGESTATE_PET (0x01a4)
+│   │       ├── pet_feed.rs    CZ_USE_ITEM_ON_PET (0x01a9) — click "Alimentar"
+│   │       └── restart.rs     ZC_RESTART_ACK (0x00b3) — back-to-char/quit
 │   ├── resources/x64/         WinDivert.dll / .sys / .lib
 │   ├── capabilities/default.json
 │   ├── build.rs               Manifesto admin + Common-Controls v6
@@ -344,10 +363,15 @@ cargo test --manifest-path src-tauri/Cargo.toml     # decodificadores
 ```
 
 O Vitest cobre as funções puras de cálculo de XP/min, %/min, ETA e
-formatação no `src/addons/xp-meter/format.ts`. O `cargo test` cobre o
-parsing IPv4/TCP, o walker do dispatcher (com burst de pacotes
-concatenados num único segmento), os decoders de EXP e AID/nome, e
-o registro de decodificadores.
+formatação (`src/addons/xp-meter/format.ts` e o `formatDuration`
+compartilhado em `src/lib/format.ts`), e o classificador de estágios
+de fome do pet-feeder (`src/addons/pet-feeder/format.ts`). O
+`cargo test` cobre o parsing IPv4/TCP, o walker do dispatcher (com
+burst de pacotes concatenados num único segmento), os decoders de EXP
+e AID/nome, o registro de decodificadores, a anotação `[pet]` do
+logger (incluindo o ceil-based countdown e o skip do primeiro tick
+pós-alimentação), o cache `pet_state_store`, a sanitização de nomes
+de som (`sounds.rs`), e o parser do nome do pet do `pet_state`.
 
 ## Contrato de captura (resumo)
 
