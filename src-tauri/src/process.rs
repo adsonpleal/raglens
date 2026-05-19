@@ -10,7 +10,6 @@
 // PID so the UI can label rows when no AID/character name has been
 // captured yet.
 
-use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct ProcessInfo {
     pub name: Option<String>,
@@ -157,10 +156,3 @@ fn filetime_to_unix_ms(ft: windows::Win32::Foundation::FILETIME) -> u64 {
     ticks.saturating_sub(EPOCH_DIFF_100NS) / 10_000
 }
 
-#[allow(dead_code)]
-fn unix_ms_now() -> u64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as u64)
-        .unwrap_or(0)
-}

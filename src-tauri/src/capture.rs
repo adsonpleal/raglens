@@ -13,9 +13,10 @@
 // connection filtering and the dev opcode logger.
 
 use crate::connections::{ConnectionsState, FourTuple};
+use crate::disconnect;
 use crate::dispatch::{dispatch_packet, Direction};
 use crate::logger::OpcodeLogger;
-use crate::packet;
+use crate::packet::{self, TCP_FIN, TCP_RST};
 use serde::Serialize;
 use std::ffi::{c_void, CString};
 use std::io;
@@ -112,20 +113,25 @@ pub fn start_capture(
 
     let handle_store = state.handle.clone();
     let app_thread = app.clone();
+    let running_capture = running.clone();
     std::thread::spawn(move || {
         let conns = app_thread.state::<ConnectionsState>();
         if let Err(e) = capture_loop(
             app_thread.clone(),
-            running.clone(),
+            running_capture.clone(),
             handle_store,
             &conns,
             &ipv4,
         ) {
             let _ = app_thread.emit("capture-error", e.to_string());
         }
-        running.store(false, Ordering::SeqCst);
+        running_capture.store(false, Ordering::SeqCst);
         let _ = app_thread.emit("capture-stopped", ());
     });
+
+    // Watchdog runs in parallel with the WinDivert recv thread.
+    // Same `running` flag, so `shutdown_capture` stops both.
+    disconnect::spawn_watchdog(app.clone(), running.clone());
 
     Ok(())
 }
@@ -259,9 +265,23 @@ fn capture_loop(
         let datagram = &packet_buf[..recv_len as usize];
         stats.packets_seen += 1;
 
-        if let Some((ft, direction, payload)) = parse_and_canonicalize(datagram) {
+        if let Some((ft, direction, parsed)) = parse_and_canonicalize(datagram) {
             stats.matched += 1;
-            dispatch_packet(&app, &ft, direction, &payload, connections, &mut logger);
+            match parsed {
+                ParsedSegment::Payload(payload) => {
+                    dispatch_packet(&app, &ft, direction, &payload, connections, &mut logger);
+                }
+                ParsedSegment::ControlRst => {
+                    disconnect::on_tcp_rst(&app, &ft, connections);
+                }
+                ParsedSegment::ControlFin => {
+                    // Graceful close — drop the tuple so the watchdog
+                    // stops tracking it. No event: graceful closes
+                    // include intentional logout (RESTART_ACK already
+                    // marked suppression) and benign network teardown.
+                    connections.forget(&ft);
+                }
+            }
         }
 
         if last_stats_emit.elapsed() >= std::time::Duration::from_millis(500) {
@@ -297,8 +317,20 @@ fn capture_loop(
     Ok(())
 }
 
+/// Output of parse_and_canonicalize. A single TCP segment is one of:
+///   - Payload(...) — non-empty payload to feed to the opcode walker.
+///   - ControlRst   — empty payload, RST set: socket killed.
+///   - ControlFin   — empty payload, FIN set: graceful close.
+/// Pure ACKs / handshake-only packets return None at the parse layer.
 #[cfg(windows)]
-fn parse_and_canonicalize(datagram: &[u8]) -> Option<(FourTuple, Direction, Vec<u8>)> {
+enum ParsedSegment {
+    Payload(Vec<u8>),
+    ControlRst,
+    ControlFin,
+}
+
+#[cfg(windows)]
+fn parse_and_canonicalize(datagram: &[u8]) -> Option<(FourTuple, Direction, ParsedSegment)> {
     let ip = packet::parse_ipv4(datagram)?;
     if ip.proto != 6 {
         return None;
@@ -308,7 +340,11 @@ fn parse_and_canonicalize(datagram: &[u8]) -> Option<(FourTuple, Direction, Vec<
     }
     let tcp_buf = &datagram[ip.header_len..ip.total_len];
     let tcp = packet::parse_tcp(tcp_buf)?;
-    if tcp.payload.is_empty() {
+    let has_rst = (tcp.flags & TCP_RST) != 0;
+    let has_fin = (tcp.flags & TCP_FIN) != 0;
+    // Drop pure ACKs / handshake-only packets. Anything carrying data
+    // or a connection-closing flag survives.
+    if tcp.payload.is_empty() && !has_rst && !has_fin {
         return None;
     }
 
@@ -344,7 +380,19 @@ fn parse_and_canonicalize(datagram: &[u8]) -> Option<(FourTuple, Direction, Vec<
         )
     };
 
-    Some((ft, direction, tcp.payload))
+    // Prefer payload when both data and flags are present (some
+    // stacks send a final data segment with FIN piggybacked). The
+    // FIN/RST in that case is handled implicitly: the next ACK or
+    // empty FIN segment will be the control branch.
+    let parsed = if !tcp.payload.is_empty() {
+        ParsedSegment::Payload(tcp.payload)
+    } else if has_rst {
+        ParsedSegment::ControlRst
+    } else {
+        ParsedSegment::ControlFin
+    };
+
+    Some((ft, direction, parsed))
 }
 
 #[cfg(windows)]

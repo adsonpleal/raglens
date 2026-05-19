@@ -19,6 +19,7 @@ use crate::dispatch::Direction;
 use tauri::AppHandle;
 
 pub mod aid;
+pub mod ban;
 pub mod char_name;
 pub mod exp_gain;
 pub mod exp_totals;
@@ -31,6 +32,7 @@ pub type DecoderFn = fn(&AppHandle, &FourTuple, Direction, &[u8]);
 pub fn lookup(opcode: u16) -> Option<DecoderFn> {
     match opcode {
         aid::OPCODE => Some(aid::decode),
+        ban::OPCODE => Some(ban::decode),
         char_name::OPCODE => Some(char_name::decode),
         exp_gain::OPCODE => Some(exp_gain::decode),
         exp_totals::OPCODE => Some(exp_totals::decode),
@@ -52,6 +54,7 @@ mod tests {
         assert!(lookup(0x0a30).is_some()); // ZC_ACK_REQNAME_TITLE
         assert!(lookup(0x0acc).is_some()); // ZC_NOTIFY_EXP
         assert!(lookup(0x0acb).is_some()); // ZC_LONGPAR_CHANGE
+        assert!(lookup(0x0081).is_some()); // ZC_NOTIFY_BAN
     }
 
     #[test]

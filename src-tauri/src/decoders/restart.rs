@@ -15,6 +15,7 @@
 // the previous character's data into the next session.
 
 use crate::connections::{ConnectionsState, FourTuple};
+use crate::disconnect::RecentRestarts;
 use crate::dispatch::Direction;
 use crate::pet_state_store::PetStateStore;
 use serde::Serialize;
@@ -44,6 +45,11 @@ pub fn decode(app: &AppHandle, ft: &FourTuple, _dir: Direction, payload: &[u8]) 
     // hunger.
     if let Some(p) = pid {
         app.state::<PetStateStore>().clear(p);
+        // Tell the disconnect detectors to ignore the FIN/RST that
+        // immediately follow this intentional logout — without this,
+        // the player gets a "desconectado" toast every time they go
+        // back to char select.
+        app.state::<RecentRestarts>().mark(p);
     }
     let _ = app.emit("client-reset", ClientReset { pid });
 }

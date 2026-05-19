@@ -41,7 +41,12 @@ pub fn dispatch_packet(
     logger: &mut Option<OpcodeLogger>,
 ) {
     if let Some(new) = connections.observe(ft) {
+        // observe() set last_seen on insert — no extra touch needed.
         emit_client_detected(app, new);
+    } else {
+        // Existing 4-tuple: refresh last_seen so the disconnect
+        // watchdog doesn't time out a connection that's still active.
+        connections.touch(ft);
     }
 
     let followed = connections.is_followed(ft);
@@ -107,6 +112,7 @@ fn fixed_packet_length(opcode: u16) -> Option<usize> {
     Some(match opcode {
         0x007f => 6,   // ZC_NOTIFY_TIME (server tick)
         0x0080 => 7,   // ZC_NOTIFY_VANISH
+        0x0081 => 3,   // ZC_NOTIFY_BAN (server kick / refuse with reason)
         0x0087 => 12,  // ZC_NOTIFY_PLAYERMOVE
         0x0088 => 10,  // ZC_STOPMOVE
         0x0091 => 22,  // ZC_NPCACK_MAPMOVE
@@ -172,6 +178,7 @@ mod tests {
         assert_eq!(fixed_packet_length(0x0283), Some(6));
         assert_eq!(fixed_packet_length(0x0a30), Some(102));
         assert_eq!(fixed_packet_length(0x00b0), Some(8));
+        assert_eq!(fixed_packet_length(0x0081), Some(3));
     }
 
     #[test]

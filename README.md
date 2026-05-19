@@ -13,7 +13,7 @@ modificado.
 
 ## ⬇ Download
 
-[**raglens-v0.1.7-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.7-setup.exe)
+[**raglens-v0.1.8-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.8-setup.exe)
 — instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
 embutido; basta executar e seguir o instalador. O Raglens é configurado
 para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
@@ -48,6 +48,7 @@ do arquivo baixado com o `SHA256SUMS.txt` da mesma release.
 |---|---|---|
 | **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 / 3 / 5 / 15 / 30 / 60 min ou personalizado). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
 | **Informações de Mascote** | Mostra fome, intimidade, nível e nome do pet. A contagem regressiva até a próxima troca de estado é calibrada por `petType` a partir da primeira queda observada (modelo de tick discreto, persistido em `raglens.json`) — sessões seguintes começam com o timer certo desde o primeiro frame. Alertas sonoros (one-shot ou em loop, com som da biblioteca embutida ou `.wav`/`.mp3` importado) na entrada da faixa ideal (26–75, oportunidade de loyalty) e da zona de perigo (≤ 25, pet pode fugir). **Notificações por push (ntfy.sh) e Windows nativo** em matriz 3×2 (faixa ideal / perigo / alimentado × push / Windows) — desktop silencioso com push no celular, ou vice-versa. Atalho global padrão `Alt+Shift+J`. | Funcional |
+| **Aviso de Desconexão** | Addon *headless* (sem overlay) que notifica via toast do Windows e/ou push do ntfy.sh quando o cliente é desconectado do servidor de forma inesperada. Cobre três sinais: RST TCP no soquete do jogo, timeout silencioso (30 s sem pacote com o processo ainda vivo) e ZC_NOTIFY_BAN (`0x0081`, kick do servidor com código de razão). Sair pela seleção de personagem não dispara — o backend supressona o RST/FIN que segue o ZC_RESTART_ACK numa janela de 5 s. | Funcional |
 
 A lista cresce; cada addon vive em `src/addons/<id>/` com seu manifesto,
 componente React e (quando aplicável) decodificador em
@@ -298,7 +299,7 @@ raglens/
 │   │   └── OverlayHost.tsx    Shell de overlay; monta o addon
 │   ├── addons/
 │   │   ├── types.ts
-│   │   ├── registry.ts        ADDONS = [xpMeterManifest, petFeederManifest]
+│   │   ├── registry.ts        ADDONS = [xpMeterManifest, petFeederManifest, disconnectNotifyManifest]
 │   │   ├── xp-meter/
 │   │   │   ├── manifest.ts
 │   │   │   ├── config.ts      Tipos e defaults da config do addon
@@ -316,8 +317,15 @@ raglens/
 │   │       ├── ntfy.ts        Cliente JSON-publish do ntfy.sh
 │   │       ├── winNotify.ts   Toast nativo do Windows (com cache de permissão)
 │   │       └── format.ts      Stage classifier + HUNGER thresholds (vitest)
+│   │   └── disconnect-notify/
+│   │       ├── manifest.ts    Sem defaultSize/entryRoute (headless)
+│   │       ├── config.ts      pushEnabled / winEnabled / pushNtfyTopic
+│   │       ├── useDisconnectService.ts  Subscrição global de client-disconnect
+│   │       ├── notifications.ts         Dispatcher unificado (vitest)
+│   │       └── DisconnectNotifySettings.tsx
 │   ├── components/            NicPicker, ClientPicker, AddonRow,
-│   │                          AddonSettingsModal, Modal (genérico)
+│   │                          AddonSettingsModal, Modal (genérico),
+│   │                          NtfyHelpModal (compartilhado entre addons)
 │   ├── hooks/                 useCaptureSession, useClients,
 │   │                          useSelectedPid, useAddonState,
 │   │                          useAddonShortcuts, useAddonConfig,
@@ -340,9 +348,11 @@ raglens/
 │   │   ├── logger.rs          Logger dev de opcodes + anotação [pet]
 │   │   ├── pet_state_store.rs Cache backend do snapshot do pet por PID
 │   │   ├── sounds.rs          Comandos pra importar/listar sons do addon
+│   │   ├── disconnect.rs      Watchdog de timeout + supressão de logout intencional + emit chokepoint
 │   │   └── decoders/
 │   │       ├── mod.rs         lookup(opcode) -> Option<DecoderFn>
 │   │       ├── aid.rs         ZC_AID (0x0283)
+│   │       ├── ban.rs         ZC_NOTIFY_BAN (0x0081) — kick com código de razão
 │   │       ├── char_name.rs   ZC_ACK_REQNAME_TITLE (0x0a30)
 │   │       ├── exp_gain.rs    ZC_NOTIFY_EXP (0x0acc)
 │   │       ├── exp_totals.rs  ZC_LONGPAR_CHANGE (0x0acb)

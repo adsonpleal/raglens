@@ -41,6 +41,11 @@ struct ConnectionMeta {
     pid: Option<u32>,
     aid: Option<u32>,
     first_seen_unix_ms: u64,
+    /// Updated by `touch()` after every observed payload packet on
+    /// this 4-tuple. Read by the disconnect watchdog to spot
+    /// connections that have gone silent while their owning process
+    /// is still alive.
+    last_seen_unix_ms: u64,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -98,18 +103,56 @@ impl ConnectionsState {
         if map.contains_key(ft) {
             return None;
         }
+        let now = unix_ms();
         map.insert(
             ft.clone(),
             ConnectionMeta {
                 pid,
                 aid: None,
-                first_seen_unix_ms: unix_ms(),
+                first_seen_unix_ms: now,
+                last_seen_unix_ms: now,
             },
         );
         Some(NewConnection {
             four_tuple: ft.clone(),
             pid,
         })
+    }
+
+    /// Bump `last_seen_unix_ms` for an existing 4-tuple. No-op if the
+    /// FT isn't known (which would only happen for the first packet of
+    /// a tuple racing observe()). Called once per dispatched payload.
+    pub fn touch(&self, ft: &FourTuple) {
+        let mut map = self.connections.lock().unwrap();
+        if let Some(meta) = map.get_mut(ft) {
+            meta.last_seen_unix_ms = unix_ms();
+        }
+    }
+
+    /// Drop a 4-tuple from the table. Called from the FIN handler
+    /// (graceful close → connection is over, watchdog shouldn't time
+    /// it out) and from the disconnect detectors after they emit, so
+    /// the same dead connection doesn't fire a second event.
+    pub fn forget(&self, ft: &FourTuple) {
+        self.connections.lock().unwrap().remove(ft);
+    }
+
+    /// Snapshot the 4-tuples whose `last_seen_unix_ms` is older than
+    /// `now - threshold_ms`. Returns owned data so the caller doesn't
+    /// hold the connections lock across syscalls (process liveness
+    /// checks, event emits).
+    pub fn iter_stale(&self, threshold_ms: u64) -> Vec<StaleConnection> {
+        let now = unix_ms();
+        let cutoff = now.saturating_sub(threshold_ms);
+        let map = self.connections.lock().unwrap();
+        map.iter()
+            .filter(|(_, meta)| meta.last_seen_unix_ms <= cutoff)
+            .map(|(ft, meta)| StaleConnection {
+                four_tuple: ft.clone(),
+                pid: meta.pid,
+                aid: meta.aid,
+            })
+            .collect()
     }
 
     /// Returns the PID resolved for this FT at observe-time, if any.
@@ -212,6 +255,13 @@ pub struct NewConnection {
     pub pid: Option<u32>,
 }
 
+#[derive(Clone, Debug)]
+pub struct StaleConnection {
+    pub four_tuple: FourTuple,
+    pub pid: Option<u32>,
+    pub aid: Option<u32>,
+}
+
 #[derive(Serialize, Clone, Debug)]
 pub struct ClientUpdate {
     pub pid: Option<u32>,
@@ -227,7 +277,7 @@ pub fn emit_client_updated(app: &AppHandle, update: ClientUpdate) {
     let _ = app.emit("client-updated", update);
 }
 
-fn unix_ms() -> u64 {
+pub fn unix_ms() -> u64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)

@@ -3,6 +3,7 @@ import type { OverlayAppearance } from "./appearance";
 import type {
   CaptureStats,
   ClientDetected,
+  ClientDisconnect,
   ClientReset,
   ClientUpdate,
   ExpGain,
@@ -112,4 +113,13 @@ export function onClientReset(
   handler: (event: ClientReset) => void,
 ): Promise<UnlistenFn> {
   return listen<ClientReset>("client-reset", (e) => handler(e.payload));
+}
+
+/** Fires once per unexpected disconnect (RST, silent timeout, or
+ *  ZC_NOTIFY_BAN). Intentional return-to-char-select does NOT fire —
+ *  the Rust side suppresses it via the RESTART_ACK handshake. */
+export function onClientDisconnect(
+  handler: (event: ClientDisconnect) => void,
+): Promise<UnlistenFn> {
+  return listen<ClientDisconnect>("client-disconnect", (e) => handler(e.payload));
 }

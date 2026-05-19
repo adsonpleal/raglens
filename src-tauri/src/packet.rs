@@ -17,8 +17,15 @@ pub struct IpHeader {
 pub struct TcpSegment {
     pub src_port: u16,
     pub dst_port: u16,
+    pub flags: u8,
     pub payload: Vec<u8>,
 }
+
+// TCP flag bits at byte offset 13 of the TCP header (only the two we
+// care about; others left implicit so adding them later doesn't
+// require touching this file).
+pub const TCP_FIN: u8 = 0x01;
+pub const TCP_RST: u8 = 0x04;
 
 pub fn parse_ipv4(buf: &[u8]) -> Option<IpHeader> {
     if buf.len() < 20 {
@@ -60,10 +67,12 @@ pub fn parse_tcp(buf: &[u8]) -> Option<TcpSegment> {
     if header_len < 20 || buf.len() < header_len {
         return None;
     }
+    let flags = buf[13];
     let payload = buf[header_len..].to_vec();
     Some(TcpSegment {
         src_port,
         dst_port,
+        flags,
         payload,
     })
 }
@@ -108,5 +117,32 @@ mod tests {
         assert_eq!(t.src_port, 6900);
         assert_eq!(t.dst_port, 54321);
         assert_eq!(t.payload, b"RO!");
+        assert_eq!(t.flags, 0);
+    }
+
+    #[test]
+    fn parses_rst_flag() {
+        let mut buf = vec![0u8; 20];
+        buf[12] = 0x50;
+        buf[13] = TCP_RST;
+        assert_eq!(parse_tcp(&buf).expect("parse").flags & TCP_RST, TCP_RST);
+    }
+
+    #[test]
+    fn parses_fin_flag() {
+        let mut buf = vec![0u8; 20];
+        buf[12] = 0x50;
+        buf[13] = TCP_FIN;
+        assert_eq!(parse_tcp(&buf).expect("parse").flags & TCP_FIN, TCP_FIN);
+    }
+
+    #[test]
+    fn parses_both_rst_and_fin() {
+        let mut buf = vec![0u8; 20];
+        buf[12] = 0x50;
+        buf[13] = TCP_FIN | TCP_RST;
+        let t = parse_tcp(&buf).expect("parse");
+        assert_eq!(t.flags & TCP_RST, TCP_RST);
+        assert_eq!(t.flags & TCP_FIN, TCP_FIN);
     }
 }

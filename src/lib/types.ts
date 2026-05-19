@@ -107,3 +107,25 @@ export type CaptureStats = {
 };
 
 export type CaptureStatus = "idle" | "recording" | "stopped";
+
+/** Source of a `client-disconnect` event. `rst` = TCP socket killed
+ *  (server-side or local), `timeout` = no packets for the watchdog
+ *  window while the client process is still alive, `ban` = decoded
+ *  ZC_NOTIFY_BAN (0x0081) packet with a reason code. */
+export type DisconnectKind = "rst" | "timeout" | "ban";
+
+/** Mirrors the Rust `ClientDisconnect` payload emitted on
+ *  `client-disconnect`. Fires once per logical event — `disconnect.rs`
+ *  suppresses intentional return-to-char-select via the
+ *  RESTART_ACK/RecentRestarts handshake and dedupes BAN-then-RST
+ *  inside its emit window. */
+export type ClientDisconnect = {
+  pid: number | null;
+  aid: number | null;
+  kind: DisconnectKind;
+  /** pt-BR reason string for `ban`; null for `rst` and `timeout`. */
+  reason: string | null;
+  /** Raw reason byte from ZC_NOTIFY_BAN; null for non-ban kinds. */
+  reason_code: number | null;
+  unix_ms: number;
+};

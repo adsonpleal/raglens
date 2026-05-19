@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useDisconnectService } from "../addons/disconnect-notify/useDisconnectService";
 import { AddonRow } from "../components/AddonRow";
 import { AddonSettingsModal } from "../components/AddonSettingsModal";
 import { ClientPicker } from "../components/ClientPicker";
@@ -44,6 +45,11 @@ export function MainWindow() {
   // addon that has one configured. The hook handles registering /
   // unregistering as the map changes.
   useAddonShortcuts(shortcuts);
+
+  // Headless addon: subscribes to `client-disconnect` for the whole
+  // app session and fires Windows toast / ntfy push per the user's
+  // config. No-op when the addon is disabled in the addons list.
+  useDisconnectService();
 
   const { available: updateAvailable, dismiss: dismissUpdate } =
     useLatestRelease();

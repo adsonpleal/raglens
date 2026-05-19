@@ -1,10 +1,12 @@
 import type { AddonManifest } from "./types";
+import { disconnectNotifyManifest } from "./disconnect-notify/manifest";
 import { petFeederManifest } from "./pet-feeder/manifest";
 import { xpMeterManifest } from "./xp-meter/manifest";
 
 export const ADDONS: readonly AddonManifest[] = [
   xpMeterManifest,
   petFeederManifest,
+  disconnectNotifyManifest,
 ];
 
 export function getAddon(id: string): AddonManifest | undefined {

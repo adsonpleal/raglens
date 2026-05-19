@@ -7,6 +7,73 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-05-19
+
+### Adicionado
+
+- Novo addon **Aviso de Desconexão** (`disconnect-notify`): notifica
+  via toast do Windows e/ou push do ntfy.sh quando você é
+  desconectado do servidor de forma inesperada. Reutiliza os
+  primitivos de notificação do pet-feeder (`winNotify` / `ntfy`) —
+  zero duplicação. O usuário escolhe um ou os dois canais e configura
+  o tópico de push pelo botão **Configurar**; um botão **Testar**
+  por canal valida a configuração antes da próxima queda.
+- **Detecção de queda em três frentes**, todas convergindo em um
+  único evento `client-disconnect` no backend:
+  - **RST TCP** observado na captura: `capture.rs` agora expõe um
+    `enum ParsedSegment { Payload | ControlRst | ControlFin }` e
+    `packet.rs` lê o byte de flags do header TCP (offset 13, com
+    constantes `TCP_FIN`/`TCP_RST`). Segmentos sem payload mas com
+    RST setado disparam `disconnect::on_tcp_rst` em vez de virarem
+    no-op como antes.
+  - **Timeout silencioso** (30s sem pacote enquanto o processo do
+    cliente continua vivo): watchdog rodando em paralelo com o loop
+    do WinDivert, compartilhando a mesma flag de `running` então
+    `shutdown_capture` para os dois com um único shutdown. Cache de
+    `process_info(pid)` por tick agrupa múltiplas conexões do mesmo
+    Ragexe — uma syscall por PID, não por 4-tupla.
+  - **ZC_NOTIFY_BAN (`0x0081`)**: decoder novo em
+    `src-tauri/src/decoders/ban.rs` com tabela pt-BR pra cada código
+    de razão (kick, sessão duplicada, conta suspensa, manutenção, etc.).
+    A mensagem visível ao usuário é unificada — todos os três
+    caminhos viram um único toast/push "Desconectado do servidor".
+- **Supressão de desconexão intencional**: `restart::decode` marca o
+  PID em `RecentRestarts` no momento do ZC_RESTART_ACK bem-sucedido,
+  e a janela de 5s suprime o FIN/RST que naturalmente segue um "voltar
+  à seleção de personagem". `RecentEmits` (janela de 10s) deduplica
+  a sequência BAN → RST que o servidor emite num kick — uma notificação
+  por evento lógico, não duas.
+
+### Mudanças internas
+
+- **Padrão de addon "headless"**: `AddonManifest` ganhou `defaultSize`
+  e `entryRoute` opcionais, com um type guard `hasOverlay(manifest):
+  manifest is OverlayAddonManifest` em `src/addons/types.ts` que
+  narrowa o tipo pros callers. `spawnAddonOverlay`, `syncOverlays`,
+  `AddonRow` e `AddonSettingsModal` filtram via esse guard, então o
+  `disconnect-notify` consegue ficar no addons list (toggle on/off +
+  Configurar) sem ganhar checkboxes de "Sempre visível"/"Travado" nem
+  janela de overlay. A subscrição vive em `useDisconnectService`
+  montado uma vez no `MainWindow` pelo tempo de vida do app.
+- `NtfyHelpModal` movido para `src/components/NtfyHelpModal.tsx` e
+  parametrizado por `topicExample` — pet-feeder e disconnect-notify
+  consomem o mesmo componente em vez de manterem cópias quase
+  idênticas (cerca de 50 linhas de JSX deletadas).
+- Três cópias de `unix_ms()` colapsadas em uma. `connections::unix_ms`
+  virou `pub`; o helper duplicado em `disconnect.rs` e o `unix_ms_now`
+  dead code em `process.rs` foram removidos.
+- `RecentRestarts`/`RecentEmits` agora reapam entradas mais antigas
+  que a janela respectiva uma vez por tick do watchdog — o keyspace
+  por PID fica limitado mesmo em sessões longas com muitos clientes
+  rotacionando.
+- `connections.touch(ft)` no `dispatch_packet` agora roda só quando
+  `observe()` retorna `None` (conexão já existia). No insert novo,
+  `observe` já gravou `last_seen_unix_ms`, evitando um lock redundante
+  do mutex no hot path.
+- `ClientDisconnect::rst(...)`, `::timeout(...)` e `::ban(...)`
+  centralizam o `unix_ms()` e a montagem do payload — os três call
+  sites perderam ~6 linhas de boilerplate cada.
+
 ## [0.1.7] - 2026-05-19
 
 ### Adicionado
@@ -347,7 +414,10 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
   pro `capture.rs` como buffer por-stream segue o mesmo padrão que o
   `useCapture.ts` do ragmarket usa na frontend.
 
-[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/adsonpleal/raglens/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/adsonpleal/raglens/compare/v0.1.7...v0.1.8
+[0.1.7]: https://github.com/adsonpleal/raglens/compare/v0.1.6...v0.1.7
+[0.1.6]: https://github.com/adsonpleal/raglens/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/adsonpleal/raglens/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/adsonpleal/raglens/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/adsonpleal/raglens/compare/v0.1.2...v0.1.3

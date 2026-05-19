@@ -1,6 +1,7 @@
 mod capture;
 mod connections;
 mod decoders;
+mod disconnect;
 mod dispatch;
 mod foreground;
 mod interfaces;
@@ -52,6 +53,8 @@ pub fn run() {
         .manage(ConnectionsState::default())
         .manage(ForegroundWatcherState::default())
         .manage(pet_state_store::PetStateStore::default())
+        .manage(disconnect::RecentRestarts::default())
+        .manage(disconnect::RecentEmits::default())
         .setup(|app| {
             // Kick the foreground watcher as soon as the app is up. It
             // emits foreground-changed events for the lifetime of the

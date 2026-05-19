@@ -6,8 +6,10 @@
 
 import { useEffect, useState } from "react";
 import { getAddon } from "../addons/registry";
+import { DisconnectNotifySettings } from "../addons/disconnect-notify/DisconnectNotifySettings";
 import { PetFeederSettings } from "../addons/pet-feeder/PetFeederSettings";
 import { XpMeterSettings } from "../addons/xp-meter/XpMeterSettings";
+import { hasOverlay } from "../addons/types";
 import { AppearanceSection } from "./AppearanceSection";
 import { Modal } from "./Modal";
 
@@ -28,17 +30,27 @@ export function AddonSettingsModal({
   const manifest = getAddon(addonId);
   if (!manifest) return null;
 
+  // Shortcut + appearance only apply to addons with an overlay
+  // window. Headless service addons (disconnect-notify) skip both
+  // and render their own settings directly.
+  const showOverlayChrome = hasOverlay(manifest);
+
   return (
     <Modal title={manifest.name} onClose={onClose}>
-      <ShortcutSection
-        addonId={addonId}
-        current={currentShortcut}
-        defaultShortcut={manifest.defaultShortcut}
-        onSave={onSaveShortcut}
-      />
-      <AppearanceSection addonId={addonId} />
+      {showOverlayChrome && (
+        <>
+          <ShortcutSection
+            addonId={addonId}
+            current={currentShortcut}
+            defaultShortcut={manifest.defaultShortcut}
+            onSave={onSaveShortcut}
+          />
+          <AppearanceSection addonId={addonId} />
+        </>
+      )}
       {addonId === "xp-meter" && <XpMeterSettings />}
       {addonId === "pet-feeder" && <PetFeederSettings />}
+      {addonId === "disconnect-notify" && <DisconnectNotifySettings />}
     </Modal>
   );
 }

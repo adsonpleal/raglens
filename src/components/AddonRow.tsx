@@ -1,4 +1,5 @@
 import type { AddonManifest } from "../addons/types";
+import { hasOverlay } from "../addons/types";
 import { t } from "../i18n/pt-br";
 
 type Props = {
@@ -31,22 +32,26 @@ export function AddonRow({
       <div className="addon-controls">
         {enabled && (
           <>
-            <label className="addon-check">
-              <input
-                type="checkbox"
-                checked={alwaysVisible}
-                onChange={(e) => onAlwaysVisibleToggle(e.target.checked)}
-              />
-              <span>{t.addons.alwaysVisible}</span>
-            </label>
-            <label className="addon-check">
-              <input
-                type="checkbox"
-                checked={locked}
-                onChange={(e) => onLockToggle(e.target.checked)}
-              />
-              <span>{t.addons.locked}</span>
-            </label>
+            {hasOverlay(manifest) && (
+              <>
+                <label className="addon-check">
+                  <input
+                    type="checkbox"
+                    checked={alwaysVisible}
+                    onChange={(e) => onAlwaysVisibleToggle(e.target.checked)}
+                  />
+                  <span>{t.addons.alwaysVisible}</span>
+                </label>
+                <label className="addon-check">
+                  <input
+                    type="checkbox"
+                    checked={locked}
+                    onChange={(e) => onLockToggle(e.target.checked)}
+                  />
+                  <span>{t.addons.locked}</span>
+                </label>
+              </>
+            )}
             <button className="ghost" onClick={onConfigure}>
               {t.addons.configure}
             </button>

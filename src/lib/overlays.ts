@@ -15,6 +15,7 @@ import {
   getAllWebviewWindows,
 } from "@tauri-apps/api/webviewWindow";
 import type { AddonManifest } from "../addons/types";
+import { hasOverlay } from "../addons/types";
 import {
   OverlayBounds,
   getOverlayBounds,
@@ -36,6 +37,11 @@ export function parseOverlayLabel(label: string): string | null {
 export async function spawnAddonOverlay(
   manifest: AddonManifest,
 ): Promise<WebviewWindow | null> {
+  // Headless addons (service-only, no overlay window) never spawn a
+  // webview. Calling this on one is a no-op rather than an error so
+  // callers can pass any manifest without first checking.
+  if (!hasOverlay(manifest)) return null;
+
   const label = overlayLabel(manifest.id);
   const existing = await WebviewWindow.getByLabel(label);
   if (existing) return existing;
@@ -113,7 +119,12 @@ export async function setAddonOverlayLocked(
 export async function syncOverlays(
   enabledAddons: readonly AddonManifest[],
 ): Promise<void> {
-  const wanted = new Set(enabledAddons.map((m) => overlayLabel(m.id)));
+  // Skip headless addons — they have no overlay to spawn or close.
+  // The set of "wanted" labels only contains addons that produce a
+  // webview, so existing headless-addon enables don't accidentally
+  // tear down a phantom window.
+  const overlayAddons = enabledAddons.filter(hasOverlay);
+  const wanted = new Set(overlayAddons.map((m) => overlayLabel(m.id)));
 
   const all = await getAllWebviewWindows();
   const existing = new Set<string>();
@@ -125,7 +136,7 @@ export async function syncOverlays(
     }
   }
 
-  for (const m of enabledAddons) {
+  for (const m of overlayAddons) {
     if (!existing.has(overlayLabel(m.id))) {
       await spawnAddonOverlay(m);
     }
