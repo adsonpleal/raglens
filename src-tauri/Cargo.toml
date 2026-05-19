@@ -1,6 +1,6 @@
 [package]
 name = "raglens"
-version = "0.1.6"
+version = "0.1.7"
 description = "WoW-addon-style overlay framework for Ragnarok Online"
 authors = ["adson"]
 edition = "2021"
@@ -28,6 +28,7 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 hex = "0.4"

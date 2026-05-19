@@ -13,7 +13,7 @@ modificado.
 
 ## ⬇ Download
 
-[**raglens-v0.1.6-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.6-setup.exe)
+[**raglens-v0.1.7-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.7-setup.exe)
 — instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
 embutido; basta executar e seguir o instalador. O Raglens é configurado
 para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
@@ -47,7 +47,7 @@ do arquivo baixado com o `SHA256SUMS.txt` da mesma release.
 | Addon | Descrição | Status |
 |---|---|---|
 | **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 / 3 / 5 / 15 / 30 / 60 min ou personalizado). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
-| **Informações de Mascote** | Mostra fome, intimidade, nível e nome do pet. A contagem regressiva até a próxima troca de estado é calibrada por `petType` a partir da primeira queda observada (modelo de tick discreto, persistido em `raglens.json`) — sessões seguintes começam com o timer certo desde o primeiro frame. Alertas sonoros (one-shot ou em loop, com som da biblioteca embutida ou `.wav`/`.mp3` importado) na entrada da faixa ideal (26–75, oportunidade de loyalty) e da zona de perigo (≤ 25, pet pode fugir). Atalho global padrão `Alt+Shift+J`. | Funcional |
+| **Informações de Mascote** | Mostra fome, intimidade, nível e nome do pet. A contagem regressiva até a próxima troca de estado é calibrada por `petType` a partir da primeira queda observada (modelo de tick discreto, persistido em `raglens.json`) — sessões seguintes começam com o timer certo desde o primeiro frame. Alertas sonoros (one-shot ou em loop, com som da biblioteca embutida ou `.wav`/`.mp3` importado) na entrada da faixa ideal (26–75, oportunidade de loyalty) e da zona de perigo (≤ 25, pet pode fugir). **Notificações por push (ntfy.sh) e Windows nativo** em matriz 3×2 (faixa ideal / perigo / alimentado × push / Windows) — desktop silencioso com push no celular, ou vice-versa. Atalho global padrão `Alt+Shift+J`. | Funcional |
 
 A lista cresce; cada addon vive em `src/addons/<id>/` com seu manifesto,
 componente React e (quando aplicável) decodificador em
@@ -308,14 +308,16 @@ raglens/
 │   │   │   └── format.ts      Vitest cobre xpPerMinute, ETA, formatação
 │   │   └── pet-feeder/
 │   │       ├── manifest.ts
-│   │       ├── config.ts      Defaults: sons, alertas, escala, visibilidade
+│   │       ├── config.ts      Defaults + PET_NOTIFICATION_EVENTS table
 │   │       ├── PetFeeder.tsx
 │   │       ├── PetFeederSettings.tsx
 │   │       ├── usePetState.ts Inscrito em packet:pet-state + onPetFedRequest
 │   │       ├── sounds.ts      Catálogo embutido + import de .wav/.mp3
+│   │       ├── ntfy.ts        Cliente JSON-publish do ntfy.sh
+│   │       ├── winNotify.ts   Toast nativo do Windows (com cache de permissão)
 │   │       └── format.ts      Stage classifier + HUNGER thresholds (vitest)
 │   ├── components/            NicPicker, ClientPicker, AddonRow,
-│   │                          AddonSettingsModal
+│   │                          AddonSettingsModal, Modal (genérico)
 │   ├── hooks/                 useCaptureSession, useClients,
 │   │                          useSelectedPid, useAddonState,
 │   │                          useAddonShortcuts, useAddonConfig,

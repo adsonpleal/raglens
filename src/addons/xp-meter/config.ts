@@ -3,6 +3,9 @@
 // under `addon.xp-meter.config`.
 
 export type XpMeterConfig = {
+  /** Toggles the small "Experiência" label above the rows. Matches
+   *  the pet-feeder's "Mascote" header behaviour. */
+  showHeader: boolean;
   showBaseRate: boolean;
   showJobRate: boolean;
   showBasePercent: boolean;
@@ -18,6 +21,7 @@ export type XpMeterConfig = {
 };
 
 export const xpMeterDefaultConfig: XpMeterConfig = {
+  showHeader: true,
   showBaseRate: true,
   showJobRate: true,
   showBasePercent: true,
@@ -43,11 +47,13 @@ export const xpMeterWindowOptions: ReadonlyArray<{
   { label: "1 h", value: 60 * 60_000 },
 ];
 
-/** Boolean keys in `XpMeterConfig` — i.e. the per-row visibility
- *  flags. Excludes the numeric fields. */
+/** Boolean keys in `XpMeterConfig` for the per-row visibility flags.
+ *  Excludes the numeric fields and `showHeader` (which controls the
+ *  header label, not a data row, and lives outside the row-labels
+ *  map). */
 export type XpMeterRowKey = Exclude<
   keyof XpMeterConfig,
-  "windowMs" | "uiScale"
+  "windowMs" | "uiScale" | "showHeader"
 >;
 
 /** Compact suffix used in row labels — e.g. "5min" or "1h". The

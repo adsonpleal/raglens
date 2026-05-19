@@ -393,6 +393,72 @@ button.ghost {
   font-size: 11px;
 }
 
+.modal-section p,
+.modal-section ol,
+.modal-section ul {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.notify-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid #2a2a36;
+  border-radius: 6px;
+  background: #14141a;
+}
+
+.notify-matrix {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  column-gap: 18px;
+  row-gap: 8px;
+  align-items: center;
+  margin-top: 4px;
+}
+.notify-matrix__row {
+  display: contents;
+}
+.notify-matrix__head > span {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #b8b8c4;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #2a2a36;
+}
+.notify-matrix__row:not(.notify-matrix__head) > [role="rowheader"] {
+  font-size: 12px;
+}
+.notify-matrix > input[type="checkbox"] {
+  justify-self: center;
+}
+.notify-matrix__head > span:not(:first-child) {
+  text-align: center;
+}
+.modal-numbered {
+  padding-inline-start: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.modal-numbered ul {
+  padding-inline-start: 18px;
+  list-style: disc;
+  margin-top: 2px;
+}
+.modal-section code {
+  background: #14141a;
+  border: 1px solid #2a2a36;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 11px;
+}
+
 .modal-shortcut-row {
   display: flex;
   gap: 8px;

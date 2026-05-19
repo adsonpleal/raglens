@@ -128,6 +128,16 @@ export function XpMeterSettings() {
           Desmarque para ocultar a linha no overlay.
         </p>
         <ul className="modal-checklist">
+          <li>
+            <label>
+              <input
+                type="checkbox"
+                checked={config.showHeader}
+                onChange={(e) => update({ showHeader: e.target.checked })}
+              />
+              <span>Cabeçalho</span>
+            </label>
+          </li>
           {rows.map(([key, label]) => (
             <li key={key}>
               <label>

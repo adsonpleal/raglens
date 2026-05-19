@@ -7,6 +7,58 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-05-19
+
+### Adicionado
+
+- **Notificações para o pet-feeder** com dois canais independentes
+  e tabela granular por evento:
+  - **Push (ntfy.sh)**: o usuário escolhe um tópico único, cola no
+    app do ntfy no celular, e o Raglens manda uma notificação via
+    `POST https://ntfy.sh/` na transição para a faixa ideal, na
+    zona de perigo e a cada alimentação. Implementado com a API JSON
+    do ntfy para evitar a heurística de detecção binária do servidor
+    (qualquer UTF-8 multi-byte no body, tipo um em-dash, virava
+    anexo). Timeout de 8s na requisição pra `Testar` não travar.
+  - **Windows**: toast nativo via `tauri-plugin-notification`. A
+    permissão é tratada por-webview com cache em módulo — o overlay
+    e a janela de configuração não precisam pedir permissão
+    separado. O instalador NSIS registra o AppUserModelID via
+    atalho do Menu Iniciar (sem instalar, o Windows ignora os
+    toasts; é uma limitação conhecida do plugin em dev).
+  - **Matriz 3×2** no modal de configuração: cada evento (faixa
+    ideal, zona de perigo, alimentado) pode ser ligado/desligado
+    por canal independentemente, permitindo desktop silencioso com
+    push no celular ou vice-versa.
+  - **Botões "Testar"** por canal com feedback inline
+    (`✓ Enviado` / `✗ Falhou` / `Permissão negada`) e um botão `?`
+    abrindo modal com instruções pt-BR para configurar o ntfy
+    (instalar app, escolher tópico único, etc.).
+- **Evento "alimentado"** detectado por aumento de fome (bump
+  otimista + confirmação do servidor), incluindo o valor atual de
+  lealdade na mensagem. Funciona mesmo com lealdade no máximo
+  (1000), onde o servidor não emite o pacote de mudança de
+  intimidade — keying em fome em vez de intimidade nunca perde
+  uma alimentação.
+- **Cabeçalho opcional no XP meter** (toggle "Cabeçalho" na seção
+  Exibição), com o rótulo "Experiência" no mesmo estilo do
+  cabeçalho "Mascote" do pet-feeder.
+
+### Mudanças internas
+
+- `formatDuration` (que já tinha sido extraído para `lib/format.ts`)
+  agora é compartilhado também via o estilo de cabeçalho:
+  `.overlay-header` virou regra em `styles/overlay.css` e os dois
+  addons consomem a mesma classe.
+- Novo componente `<Modal>` em `components/Modal.tsx` encapsulando
+  backdrop + sticky header + close button + click-outside-to-close
+  com `zIndex` opcional para modais empilhados. `AddonSettingsModal`
+  e o `NtfyHelpModal` aninhado consomem ele.
+- `PET_NOTIFICATION_EVENTS` (lista tipada com `pushKey` e `winKey`
+  pré-resolvidos) virou a fonte de verdade pro matrix: o dispatcher
+  e a UI da tabela leem dela; o cast `as keyof PetFeederConfig`
+  e o helper `capitalize<T>` foram removidos.
+
 ## [0.1.6] - 2026-05-18
 
 ### Adicionado

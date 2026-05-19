@@ -10,9 +10,16 @@ import {
   hungerStage,
   type HungerStage,
 } from "./format";
-import { petFeederDefaultConfig } from "./config";
+import {
+  PET_NOTIFICATION_EVENTS,
+  petFeederDefaultConfig,
+  type PetFeederConfig,
+  type PetNotificationEvent,
+} from "./config";
+import { sendNtfyPush, type NtfyMessage } from "./ntfy";
 import { playSound, type SoundHandle } from "./sounds";
 import { usePetState } from "./usePetState";
+import { sendWindowsNotification } from "./winNotify";
 import "./pet-feeder.css";
 
 type Props = {
@@ -35,16 +42,30 @@ export function PetFeeder({ pid, client: _client }: Props) {
     intimacy,
     level,
     name,
+    petType,
     tickModel,
     lastHungerMs,
     isOptimistic,
   } = usePetState(pid);
   useScaleAspectRatio(config.uiScale);
   const prevStageRef = useRef<HungerStage | null>(null);
+  // Previous hunger value, used to detect the "fed" event: any
+  // server-confirmed *or* optimistic increase means the user just
+  // fed the pet. Keying on hunger (not intimacy) means feeds at max
+  // loyalty still fire — the server skips the intimacy packet when
+  // there's nothing to add.
+  const prevHungerRef = useRef<number | null>(null);
   // Active looping alert sounds — kept so we can stop them on stage
   // exit, on unmount, or when the user mutes the addon.
   const optimalLoopRef = useRef<SoundHandle | null>(null);
   const dangerLoopRef = useRef<SoundHandle | null>(null);
+
+  // Reset the per-pet tracking refs on swap so the previous pet's
+  // values don't bleed into the new pet's first observations.
+  useEffect(() => {
+    prevStageRef.current = null;
+    prevHungerRef.current = null;
+  }, [petType]);
 
   // Re-render every second so the countdown stays accurate even when
   // no new packet has arrived.
@@ -68,53 +89,65 @@ export function PetFeeder({ pid, client: _client }: Props) {
   const stage: HungerStage | null =
     hunger === null ? null : hungerStage(hunger);
 
-  // Trigger sound on the *transition* into an alert state. Re-renders
-  // while staying in the state don't replay the sound. Exiting the
-  // state stops the looping alert (if any).
+  // Stop any active looping sound the moment the user disables the
+  // sound master. Separated from the transition effect below so that
+  // muting doesn't accidentally bail out of notification dispatch.
   useEffect(() => {
-    // Muting silences any active loop immediately.
     if (!config.soundEnabled) {
       optimalLoopRef.current?.stop();
       optimalLoopRef.current = null;
       dangerLoopRef.current?.stop();
       dangerLoopRef.current = null;
-      return;
     }
-    if (stage === null) return;
+  }, [config.soundEnabled]);
 
+  // Stage transitions drive both the audible alert and the
+  // optimal/danger notifications. Notifications fire even when sound
+  // is muted — the user might want a silent desktop overlay but
+  // still get a phone or Windows toast when stepping away.
+  useEffect(() => {
+    if (stage === null) return;
     const prev = prevStageRef.current;
     prevStageRef.current = stage;
     if (prev === stage) return;
 
-    // Leaving an alert state stops its loop (if it was looping).
-    if (prev === "nenhuma" && stage !== "nenhuma") {
-      optimalLoopRef.current?.stop();
-      optimalLoopRef.current = null;
-    }
     const wasDanger = prev === "fome" || prev === "faminto";
     const isDanger = stage === "fome" || stage === "faminto";
-    if (wasDanger && !isDanger) {
-      dangerLoopRef.current?.stop();
-      dangerLoopRef.current = null;
+
+    if (config.soundEnabled) {
+      // Leaving an alert state stops its loop (if it was looping).
+      if (prev === "nenhuma" && stage !== "nenhuma") {
+        optimalLoopRef.current?.stop();
+        optimalLoopRef.current = null;
+      }
+      if (wasDanger && !isDanger) {
+        dangerLoopRef.current?.stop();
+        dangerLoopRef.current = null;
+      }
+      // Entering an alert state starts the sound (looping or one-shot).
+      if (stage === "nenhuma" && config.optimalAlert) {
+        void playSound(
+          config.optimalSound,
+          config.volume,
+          config.optimalSoundLoop,
+        ).then((handle) => {
+          if (config.optimalSoundLoop) optimalLoopRef.current = handle;
+        });
+      } else if (isDanger && !wasDanger && config.dangerAlert) {
+        void playSound(
+          config.dangerSound,
+          config.volume,
+          config.dangerSoundLoop,
+        ).then((handle) => {
+          if (config.dangerSoundLoop) dangerLoopRef.current = handle;
+        });
+      }
     }
 
-    // Entering an alert state starts the sound (looping or one-shot).
-    if (stage === "nenhuma" && config.optimalAlert) {
-      void playSound(
-        config.optimalSound,
-        config.volume,
-        config.optimalSoundLoop,
-      ).then((handle) => {
-        if (config.optimalSoundLoop) optimalLoopRef.current = handle;
-      });
-    } else if (isDanger && !wasDanger && config.dangerAlert) {
-      void playSound(
-        config.dangerSound,
-        config.volume,
-        config.dangerSoundLoop,
-      ).then((handle) => {
-        if (config.dangerSoundLoop) dangerLoopRef.current = handle;
-      });
+    if (stage === "nenhuma") {
+      dispatchPetNotification("optimal", config);
+    } else if (isDanger && !wasDanger) {
+      dispatchPetNotification("danger", config);
     }
   }, [
     stage,
@@ -126,6 +159,32 @@ export function PetFeeder({ pid, client: _client }: Props) {
     config.dangerSound,
     config.dangerSoundLoop,
     config.volume,
+    config.pushEnabled,
+    config.pushNtfyTopic,
+    config.winEnabled,
+    config.pushOptimal,
+    config.pushDanger,
+    config.winOptimal,
+    config.winDanger,
+  ]);
+
+  // Pet-fed detection: any *increase* in hunger means the user just
+  // fed (the optimistic bump and the server's confirmation both
+  // advance the anchor, so this fires once per feed).
+  useEffect(() => {
+    if (hunger === null) return;
+    const prev = prevHungerRef.current;
+    prevHungerRef.current = hunger;
+    if (prev === null || hunger <= prev) return;
+    dispatchPetNotification("fed", config, { newIntimacy: intimacy ?? 0 });
+  }, [
+    hunger,
+    intimacy,
+    config.pushEnabled,
+    config.pushNtfyTopic,
+    config.winEnabled,
+    config.pushFed,
+    config.winFed,
   ]);
 
   if (hunger === null || stage === null) {
@@ -137,7 +196,7 @@ export function PetFeeder({ pid, client: _client }: Props) {
         className="pet-feeder pet-feeder--waiting"
         style={{ zoom: config.uiScale }}
       >
-        {config.showHeader && <div className="pet-feeder__header">Mascote</div>}
+        {config.showHeader && <div className="overlay-header">Mascote</div>}
         <span>Aguardando dados do mascote…</span>
       </div>
     );
@@ -169,7 +228,7 @@ export function PetFeeder({ pid, client: _client }: Props) {
       } ${isDanger && config.dangerAlert ? "pet-feeder--danger" : ""}`}
       style={{ zoom: config.uiScale }}
     >
-      {config.showHeader && <div className="pet-feeder__header">Mascote</div>}
+      {config.showHeader && <div className="overlay-header">Mascote</div>}
 
       {config.showName && name && (
         <div className="pet-feeder__row pet-feeder__name">{name}</div>
@@ -207,6 +266,91 @@ export function PetFeeder({ pid, client: _client }: Props) {
       )}
     </div>
   );
+}
+
+type FedContext = { newIntimacy: number };
+
+type EventDef = { push: NtfyMessage; win: { title: string; body: string } };
+
+/** Builds the per-event message payloads. Kept as a function (not a
+ *  static map) so the "fed" body can interpolate the new intimacy
+ *  and the delta. Same strings flow to both channels — the user
+ *  doesn't need to know which one delivered the alert. */
+function buildEventMessages(
+  event: PetNotificationEvent,
+  ctx?: FedContext,
+): EventDef {
+  switch (event) {
+    case "optimal":
+      return {
+        push: {
+          title: "Mascote pronto pra alimentar",
+          body: "Fome entrou na faixa ideal (Nenhuma). Alimente pra ganhar lealdade.",
+          priority: "default",
+          tags: ["green_heart"],
+        },
+        win: {
+          title: "Mascote pronto pra alimentar",
+          body: "Fome entrou na faixa ideal (Nenhuma). Alimente pra ganhar lealdade.",
+        },
+      };
+    case "danger":
+      return {
+        push: {
+          title: "Mascote em perigo!",
+          body: "Fome do mascote caiu pra zona de perigo — alimente agora pra evitar que ele fuja.",
+          priority: "high",
+          tags: ["warning"],
+        },
+        win: {
+          title: "Mascote em perigo!",
+          body: "Fome do mascote caiu pra zona de perigo — alimente agora pra evitar que ele fuja.",
+        },
+      };
+    case "fed": {
+      const intimacy = ctx?.newIntimacy ?? 0;
+      const body = `Nova lealdade: ${intimacy}.`;
+      return {
+        push: {
+          title: "Mascote alimentado",
+          body,
+          priority: "default",
+          tags: ["heart"],
+        },
+        win: { title: "Mascote alimentado", body },
+      };
+    }
+  }
+}
+
+function dispatchPetNotification(
+  event: PetNotificationEvent,
+  config: PetFeederConfig,
+  ctx?: FedContext,
+): void {
+  const def = PET_NOTIFICATION_EVENTS.find((e) => e.id === event);
+  if (!def) return;
+  const msgs = buildEventMessages(event, ctx);
+  const pushFire =
+    config.pushEnabled &&
+    config[def.pushKey] === true &&
+    config.pushNtfyTopic.trim() !== "";
+  const winFire = config.winEnabled && config[def.winKey] === true;
+  if (import.meta.env.DEV) {
+    console.info(
+      `[pet-feeder] event=${event} push=${pushFire} win=${winFire}`,
+      {
+        pushEnabled: config.pushEnabled,
+        winEnabled: config.winEnabled,
+        pushEventFlag: config[def.pushKey],
+        winEventFlag: config[def.winKey],
+        topic: config.pushNtfyTopic,
+        ctx,
+      },
+    );
+  }
+  if (pushFire) void sendNtfyPush(config.pushNtfyTopic, msgs.push);
+  if (winFire) void sendWindowsNotification(msgs.win.title, msgs.win.body);
 }
 
 type Countdown = { label: string; value: string; calculating: boolean };

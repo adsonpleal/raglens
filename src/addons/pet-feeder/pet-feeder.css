@@ -24,13 +24,6 @@
     -1px -1px 0 var(--overlay-outline, #000);
 }
 
-.pet-feeder__header {
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--overlay-fg-muted, #d8d8d8);
-}
-
 .pet-feeder--waiting {
   color: #ffb070;
   font-style: italic;

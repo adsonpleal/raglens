@@ -26,6 +26,27 @@ export type PetFeederConfig = {
   dangerSoundLoop: boolean;
   volume: number; // 0..100
 
+  /** Master toggle for ntfy.sh push notifications. When off, none of
+   *  the per-event push flags fire. Topic name is the only
+   *  "credential" — anyone who knows it can read or write the same
+   *  channel, so the user picks something hard to guess. */
+  pushEnabled: boolean;
+  pushNtfyTopic: string;
+  /** Master toggle for native Windows toast notifications. Same
+   *  off-disables-all semantics as `pushEnabled`. */
+  winEnabled: boolean;
+
+  // Per-event × per-channel matrix. The UI renders this as a 3×2
+  // grid in the settings modal so the user can mute one channel
+  // without losing the other (e.g. silent desktop while AFK but
+  // push on the phone).
+  pushOptimal: boolean;
+  pushDanger: boolean;
+  pushFed: boolean;
+  winOptimal: boolean;
+  winDanger: boolean;
+  winFed: boolean;
+
   uiScale: number; // 0.5..2.0
 };
 
@@ -47,8 +68,50 @@ export const petFeederDefaultConfig: PetFeederConfig = {
   dangerSoundLoop: true,
   volume: 70,
 
+  pushEnabled: false,
+  pushNtfyTopic: "",
+  winEnabled: false,
+
+  pushOptimal: true,
+  pushDanger: true,
+  pushFed: false,
+  winOptimal: true,
+  winDanger: true,
+  winFed: false,
+
   uiScale: 1,
 };
+
+/** Logical notification events. Two channels (push, Windows) each
+ *  with their own enable bool, surfaced together in the settings
+ *  table. */
+export type PetNotificationEvent = "optimal" | "danger" | "fed";
+
+export const PET_NOTIFICATION_EVENTS: ReadonlyArray<{
+  id: PetNotificationEvent;
+  label: string;
+  pushKey: keyof PetFeederConfig;
+  winKey: keyof PetFeederConfig;
+}> = [
+  {
+    id: "optimal",
+    label: "Entrou na faixa ideal",
+    pushKey: "pushOptimal",
+    winKey: "winOptimal",
+  },
+  {
+    id: "danger",
+    label: "Entrou na zona de perigo",
+    pushKey: "pushDanger",
+    winKey: "winDanger",
+  },
+  {
+    id: "fed",
+    label: "Alimentado (lealdade ganha)",
+    pushKey: "pushFed",
+    winKey: "winFed",
+  },
+];
 
 export const SOUND_NONE = "none";
 export const SOUND_DEFAULT_CHIME = "default-chime";

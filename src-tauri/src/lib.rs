@@ -47,6 +47,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .manage(CaptureState::default())
         .manage(ConnectionsState::default())
         .manage(ForegroundWatcherState::default())

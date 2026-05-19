@@ -30,3 +30,13 @@ body,
   border: 1px solid var(--overlay-border, rgba(255, 255, 255, 0.08));
   box-sizing: border-box;
 }
+
+/* Tiny uppercase label every overlay puts above its rows ("MASCOTE",
+ * "EXPERIÊNCIA", etc.) when its `showHeader` config is on. Same look
+ * across addons so the per-addon CSS doesn't redefine it. */
+.overlay-header {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--overlay-fg-muted, #d8d8d8);
+}

@@ -102,6 +102,9 @@ export function XpMeter({ pid, client: _client }: Props) {
   // the apparent overlay height jump around.
   return (
     <div className="xp-meter" style={{ zoom: config.uiScale }}>
+      {config.showHeader && (
+        <div className="overlay-header">Experiência</div>
+      )}
       <dl
         className="xp-meter__rows"
         style={{ visibility: hasEverReceived ? "visible" : "hidden" }}

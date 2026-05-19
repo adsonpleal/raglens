@@ -9,6 +9,7 @@ import { getAddon } from "../addons/registry";
 import { PetFeederSettings } from "../addons/pet-feeder/PetFeederSettings";
 import { XpMeterSettings } from "../addons/xp-meter/XpMeterSettings";
 import { AppearanceSection } from "./AppearanceSection";
+import { Modal } from "./Modal";
 
 type Props = {
   addonId: string | null;
@@ -28,37 +29,17 @@ export function AddonSettingsModal({
   if (!manifest) return null;
 
   return (
-    <div
-      className="modal-backdrop"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <header className="modal-header">
-          <h2>{manifest.name}</h2>
-          <button
-            className="ghost icon-button"
-            onClick={onClose}
-            aria-label="Fechar"
-          >
-            ✕
-          </button>
-        </header>
-
-        <ShortcutSection
-          addonId={addonId}
-          current={currentShortcut}
-          defaultShortcut={manifest.defaultShortcut}
-          onSave={onSaveShortcut}
-        />
-
-        <AppearanceSection addonId={addonId} />
-
-        {addonId === "xp-meter" && <XpMeterSettings />}
-        {addonId === "pet-feeder" && <PetFeederSettings />}
-      </div>
-    </div>
+    <Modal title={manifest.name} onClose={onClose}>
+      <ShortcutSection
+        addonId={addonId}
+        current={currentShortcut}
+        defaultShortcut={manifest.defaultShortcut}
+        onSave={onSaveShortcut}
+      />
+      <AppearanceSection addonId={addonId} />
+      {addonId === "xp-meter" && <XpMeterSettings />}
+      {addonId === "pet-feeder" && <PetFeederSettings />}
+    </Modal>
   );
 }
 
