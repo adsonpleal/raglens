@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { getAddon } from "../addons/registry";
 import { DisconnectNotifySettings } from "../addons/disconnect-notify/DisconnectNotifySettings";
+import { LastTeleportSettings } from "../addons/last-teleport/LastTeleportSettings";
 import { PetFeederSettings } from "../addons/pet-feeder/PetFeederSettings";
 import { XpMeterSettings } from "../addons/xp-meter/XpMeterSettings";
 import { hasOverlay } from "../addons/types";
@@ -45,11 +46,19 @@ export function AddonSettingsModal({
             defaultShortcut={manifest.defaultShortcut}
             onSave={onSaveShortcut}
           />
-          <AppearanceSection addonId={addonId} />
+          {/* last-teleport renders the map image edge-to-edge so
+            * the overlay background is never visible — hide the
+            * appearance picker (bg colour + opacity) for it; the
+            * map image gets its own opacity slider inside
+            * LastTeleportSettings. */}
+          {addonId !== "last-teleport" && (
+            <AppearanceSection addonId={addonId} />
+          )}
         </>
       )}
       {addonId === "xp-meter" && <XpMeterSettings />}
       {addonId === "pet-feeder" && <PetFeederSettings />}
+      {addonId === "last-teleport" && <LastTeleportSettings />}
       {addonId === "disconnect-notify" && <DisconnectNotifySettings />}
     </Modal>
   );

@@ -23,6 +23,58 @@ export type AddonManifest = {
    * addons leave this off — there's no overlay to toggle.
    */
   defaultShortcut?: string;
+  /**
+   * When true, locking the overlay does NOT call
+   * `setIgnoreCursorEvents(true)` — the lock still prevents drag and
+   * resize (the addon's CSS uses `pointer-events: none` on its
+   * background so background clicks don't drag the window), but
+   * buttons and other interactive elements inside the overlay stay
+   * clickable. Useful for addons that show in-overlay controls
+   * (e.g. the last-teleport history Prev/Next/Copy buttons).
+   */
+  interactiveWhenLocked?: boolean;
+  /**
+   * When true, the addon row in the main window shows a "?" button
+   * that opens an addon-specific info modal explaining how the addon
+   * works (alignment, semantics, gotchas). Wired in
+   * `AddonInfoModal`. Lets the user read about the addon before
+   * enabling it — without this, the only info button lives inside
+   * the overlay itself, which only shows once the addon is on.
+   */
+  hasInfoModal?: boolean;
+  /**
+   * Optional secondary window for the addon. When present, enabling
+   * the addon spawns TWO transparent webviews — a *primary*
+   * (entryRoute / defaultSize / defaultPosition) and a *secondary*
+   * (these fields). Both windows share the addon's lock /
+   * always-visible / user-hidden state but have independent bounds
+   * persisted under `overlay.<id>.secondary.bounds`. Use when one
+   * conceptual addon has two visually-distinct surfaces (e.g.
+   * last-teleport: a transparent minimap overlay + a small toolbar
+   * widget that the user positions separately).
+   */
+  secondaryEntryRoute?: string;
+  secondaryDefaultSize?: { width: number; height: number };
+  secondaryDefaultPosition?: { x: number; y: number };
+  /** Per-window override of `interactiveWhenLocked` for the
+   *  secondary webview. The primary uses the top-level
+   *  `interactiveWhenLocked`. */
+  secondaryInteractiveWhenLocked?: boolean;
+  /** When false, the OS window has no resize handles — the user
+   *  can't drag-resize, and any resize is driven programmatically
+   *  by the addon (typically tied to a config slider). Defaults to
+   *  true (drag-resize allowed). Applies to the primary window. */
+  resizable?: boolean;
+  /** Per-window override for the secondary webview. Defaults to
+   *  true. */
+  secondaryResizable?: boolean;
+  /** When true, the secondary window auto-sizes to its content in
+   *  BOTH dimensions (width and height). Combined with
+   *  `secondaryResizable: false` this makes the window snap to
+   *  whatever its content takes up — useful for tiny toolbar
+   *  widgets that should never be larger than the buttons inside.
+   *  Without this flag, `OverlayHost` only locks the height. */
+  secondaryAutoSize?: boolean;
 };
 
 /** Manifest narrowed to the shape that's guaranteed for overlay

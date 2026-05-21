@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useDisconnectService } from "../addons/disconnect-notify/useDisconnectService";
+import { AddonInfoModal } from "../components/AddonInfoModal";
 import { AddonRow } from "../components/AddonRow";
 import { AddonSettingsModal } from "../components/AddonSettingsModal";
 import { ClientPicker } from "../components/ClientPicker";
@@ -55,6 +56,7 @@ export function MainWindow() {
     useLatestRelease();
 
   const [settingsAddonId, setSettingsAddonId] = useState<string | null>(null);
+  const [infoAddonId, setInfoAddonId] = useState<string | null>(null);
 
   const statusKey = isRecording ? "recording" : "idle";
   const statsLine = t.capture.statsTemplate
@@ -146,6 +148,7 @@ export function MainWindow() {
                 onLockToggle={(v) => setOneLocked(a.id, v)}
                 onAlwaysVisibleToggle={(v) => setOneAlwaysVisible(a.id, v)}
                 onConfigure={() => setSettingsAddonId(a.id)}
+                onInfo={() => setInfoAddonId(a.id)}
               />
             ))}
           </ul>
@@ -161,6 +164,11 @@ export function MainWindow() {
         }
         onSaveShortcut={setOneShortcut}
         onClose={() => setSettingsAddonId(null)}
+      />
+
+      <AddonInfoModal
+        addonId={infoAddonId}
+        onClose={() => setInfoAddonId(null)}
       />
     </div>
   );

@@ -7,6 +7,78 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-05-20
+
+### Adicionado
+
+- Novo addon **Última Localização** (`last-teleport`): registra os
+  últimos pontos de onde você teleportou e desenha marcadores sobre
+  uma imagem real do minimapa do mapa atual — caminho prático pra
+  voltar quando uma sequência de Fly Wing deixa item no chão, MVP
+  vivo ou carta caída no mapa anterior. Abre duas janelas
+  independentes que compartilham configuração e estado: a janela
+  do **mapa** (transparente, redimensionada automaticamente pra
+  combinar com a proporção real do PNG carregado — não é
+  arrastável, o tamanho é controlado pelo slider `Escala` nas
+  configurações) e a janela de **controles** (widget mínimo com
+  `◀ ▶ 📋` — botões pra navegar o histórico e copiar
+  `/navi mapa X/Y` pra área de transferência). As imagens dos
+  minimapas são baixadas sob demanda do divine-pride.net na
+  primeira visita e cacheadas em
+  `%APPDATA%\com.adson.raglens\map-images\raw\`; visitas seguintes
+  carregam instantaneamente, mesmo offline. Cada marcador tem
+  contorno preto pra destacar contra mapas verdes; a posição atual
+  do jogador é um quadrado azul. Atalhos globais configuráveis
+  (`Alt+Shift+Left/Right` pra navegar, `Alt+Shift+C` pra copiar).
+  Histórico é descartado em troca de mapa (marcadores não fazem
+  sentido entre mapas distintos).
+- Decoders de pacotes de mudança de mapa do latamRO em
+  `src-tauri/src/decoders/`: `0x0091` (ZC_NPCACK_MAPMOVE — warps
+  in-zone tradicionais), `0x0092` (ZC_NPCACK_SERVERMOVE — transição
+  entre zone servers), `0x0ac5` (carregamento inicial após
+  char-select com prefixo de AID), `0x0ac7` (mudança de zone
+  hospedada por hostname em vez de IPv4, layout de 64 bytes
+  específico do latamRO confirmado via captura de pacotes em
+  2026-05-20). Fallback genérico no `dispatch.rs` que emite
+  `packet:teleport-location` pra qualquer opcode S→C cujo payload
+  contenha um filename `.gat` válido nos offsets padrão — capturas
+  futuras de variantes customizadas funcionam sem decoder dedicado.
+- Decoder de `0x0087` ZC_NOTIFY_PLAYERMOVE (`player_move.rs`) que
+  emite `packet:player-position` em cada passo de caminhada,
+  refinando a posição atual do jogador entre teleportes — sem isso
+  o quadrado azul ficaria congelado no destino do último warp.
+- Tabela de dimensões de células por mapa (`map-dimensions-data.ts`,
+  ~1300 entradas geradas via `scripts/extract-map-dimensions.mjs` a
+  partir dos arquivos FLD2 do OpenKore). Usada como fallback de
+  proporção até a imagem decodificar, e pra colocar marcadores em
+  coordenadas de célula relativas ao PNG. Mapas não listados caem
+  num default 256×256 e o addon aprende as dimensões observadas
+  (`mapBounds`) à medida que o jogador explora.
+- Cache HTTP de imagens em Rust (`map_image_cache.rs`) com cliente
+  `reqwest` (blocking + rustls-tls), gravação atômica (escreve em
+  `.partial`, depois renomeia) e detecção da redireção pro
+  `no_img.png` da divine-pride pra evitar cachear o placeholder.
+  Roda em `tauri::async_runtime::spawn_blocking`, não bloqueia a
+  thread IPC.
+- Framework de overlays: novos flags de manifesto `resizable`,
+  `secondaryResizable` e `secondaryAutoSize` em
+  `src/addons/types.ts`. `resizable: false` desabilita as alças
+  de redimensionamento da janela no nível do SO (o addon controla
+  o tamanho programaticamente via `setSize`); `secondaryAutoSize:
+  true` faz o `OverlayHost` travar largura E altura ao conteúdo
+  via `ResizeObserver` (antes só a altura travava — agora o widget
+  de controles encolhe pra largura mínima dos botões).
+
+### Modificado
+
+- **Configurações do addon Última Localização**: a seção "Cor de
+  fundo" do `AppearanceSection` é ocultada pra esse addon — a
+  janela do mapa fica sempre transparente já que a imagem do PNG
+  preenche tudo. Adicionado slider de opacidade do mapa (20–100%,
+  padrão 80%) pras marcas destacarem do terreno verde por baixo.
+  Tamanho do marcador agora vai de 1–9 px (padrão 5 — exato meio
+  do slider), antes era 4–24 px com padrão 10.
+
 ## [0.1.9] - 2026-05-19
 
 ### Corrigido

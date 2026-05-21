@@ -1,0 +1,82 @@
+/* Map-only window. The image + marker SVG both fill the window
+ * directly (LastTeleportMap programmatically sizes the window to
+ * the loaded image's natural aspect, so `object-fit: fill` gives
+ * the same pixels as `contain` and is cheaper). */
+
+.overlay-shell:has(.lt-map),
+.overlay-body:has(.lt-map) {
+  height: 0;
+  padding: 0;
+  border: none;
+  overflow: visible;
+}
+
+.lt-map {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  font-family: "Gulim", "GulimChe", "Dotum", Tahoma, "Lucida Sans Unicode",
+    sans-serif;
+  font-weight: bold;
+  color: var(--overlay-fg, #ffffff);
+}
+
+/* `image-rendering: pixelated` keeps the tiny minimap PNGs crisp;
+ * anti-aliasing turns the pixel art mushy. `--lt-map-opacity` fades
+ * the map slightly by default so the markers pop against busy
+ * terrain. */
+.lt-map__image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  object-fit: fill;
+  image-rendering: pixelated;
+  opacity: var(--lt-map-opacity, 0.8);
+}
+
+.lt-map__markers {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* History markers. Each marker is two layered shapes — a black
+ * outline drawn first, then the colored fill on top — so the
+ * marker stays readable against bright/busy map backgrounds. For
+ * fill-based shapes (circle, rect) we use `paint-order: stroke
+ * fill` so the stroke is painted UNDER the fill, producing a
+ * visible black ring around the colored interior. For stroke-
+ * based shapes (cross lines) the React code renders the outline
+ * as a separate set of thicker black lines underneath the colored
+ * ones — `paint-order` can't help when there's no fill. */
+.lt-map__marker-fill {
+  fill: #ff8800;
+  stroke: #000;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+}
+.lt-map__marker-outline {
+  fill: #000;
+  stroke: #000;
+  stroke-linejoin: round;
+}
+.lt-map__marker--active .lt-map__marker-fill {
+  fill: #ff3030;
+  stroke: #000;
+}
+.lt-map__marker--active {
+  filter: drop-shadow(0 0 2px rgba(255, 80, 80, 0.8));
+}
+
+/* Player's current position. Royal blue with a thick black halo
+ * (paint-order paints stroke first, then the fill on top). */
+.lt-map__player-square {
+  fill: #4a8bff;
+  stroke: #000;
+  stroke-width: 1;
+  paint-order: stroke fill;
+}

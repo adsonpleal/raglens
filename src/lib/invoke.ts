@@ -52,3 +52,11 @@ export type CachedPetState = {
 export function getPetState(pid: number): Promise<CachedPetState | null> {
   return invoke("get_pet_state", { pid });
 }
+
+/** On-disk path to the cached minimap PNG for a map, fetched from
+ *  divine-pride.net on first reference. Returns `null` when the
+ *  service has no image for that map (the addon then renders a
+ *  transparent background and just the markers). */
+export function getMapImagePath(mapName: string): Promise<string | null> {
+  return invoke("get_map_image_path", { mapName });
+}

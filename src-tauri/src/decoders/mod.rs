@@ -23,9 +23,13 @@ pub mod ban;
 pub mod char_name;
 pub mod exp_gain;
 pub mod exp_totals;
+pub mod latam_warp;
 pub mod pet_feed;
 pub mod pet_state;
+pub mod player_move;
 pub mod restart;
+pub mod server_move;
+pub mod warp;
 
 pub type DecoderFn = fn(&AppHandle, &FourTuple, Direction, &[u8]);
 
@@ -36,10 +40,15 @@ pub fn lookup(opcode: u16) -> Option<DecoderFn> {
         char_name::OPCODE => Some(char_name::decode),
         exp_gain::OPCODE => Some(exp_gain::decode),
         exp_totals::OPCODE => Some(exp_totals::decode),
+        latam_warp::OPCODE_INIT => Some(latam_warp::decode_init),
+        latam_warp::OPCODE_MOVE => Some(latam_warp::decode_move),
         pet_feed::OPCODE => Some(pet_feed::decode),
         pet_state::OPCODE_INFO => Some(pet_state::decode_info),
         pet_state::OPCODE_CHANGE => Some(pet_state::decode_change),
+        player_move::OPCODE => Some(player_move::decode),
         restart::OPCODE => Some(restart::decode),
+        server_move::OPCODE => Some(server_move::decode),
+        warp::OPCODE => Some(warp::decode),
         _ => None,
     }
 }
@@ -55,6 +64,10 @@ mod tests {
         assert!(lookup(0x0acc).is_some()); // ZC_NOTIFY_EXP
         assert!(lookup(0x0acb).is_some()); // ZC_LONGPAR_CHANGE
         assert!(lookup(0x0081).is_some()); // ZC_NOTIFY_BAN
+        assert!(lookup(0x0091).is_some()); // ZC_NPCACK_MAPMOVE
+        assert!(lookup(0x0092).is_some()); // ZC_NPCACK_SERVERMOVE
+        assert!(lookup(0x0ac5).is_some()); // latamRO init map load
+        assert!(lookup(0x0ac7).is_some()); // latamRO in-game map change
     }
 
     #[test]

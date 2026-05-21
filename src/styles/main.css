@@ -202,14 +202,21 @@ button.ghost {
   border-radius: 6px;
 }
 .addon-meta {
+  /* Title + description column. Shrinks first when the row gets
+   * tight — controls (toggles, buttons) keep their intrinsic
+   * width, the description text wraps. `min-width: 0` is the
+   * standard flex-shrink-in-a-flex-container fix. */
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 .addon-controls {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
 }
 
 .addon-check {
@@ -220,6 +227,9 @@ button.ghost {
   color: #b8b8c4;
   cursor: pointer;
   user-select: none;
+  /* Don't let "Sempre visível" / "Travado" wrap when the row is
+   * tight — the .addon-meta column above shrinks instead. */
+  white-space: nowrap;
 }
 .addon-check input[type="checkbox"] {
   width: 14px;

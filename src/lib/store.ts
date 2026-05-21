@@ -18,17 +18,30 @@ export type OverlayBounds = {
   height: number;
 };
 
+/** View suffix for addons that own a secondary webview. Bounds are
+ *  persisted per-view; lock / appearance / always-visible /
+ *  user-hidden are still per-addon (shared by both windows). */
+export type OverlayView = "primary" | "secondary";
+
+function boundsKey(addonId: string, view: OverlayView): string {
+  return view === "secondary"
+    ? `overlay.${addonId}.secondary.bounds`
+    : `overlay.${addonId}.bounds`;
+}
+
 export async function getOverlayBounds(
   addonId: string,
+  view: OverlayView = "primary",
 ): Promise<OverlayBounds | null> {
-  return (await store.get<OverlayBounds>(`overlay.${addonId}.bounds`)) ?? null;
+  return (await store.get<OverlayBounds>(boundsKey(addonId, view))) ?? null;
 }
 
 export async function setOverlayBounds(
   addonId: string,
   bounds: OverlayBounds,
+  view: OverlayView = "primary",
 ): Promise<void> {
-  await store.set(`overlay.${addonId}.bounds`, bounds);
+  await store.set(boundsKey(addonId, view), bounds);
   await store.save();
 }
 

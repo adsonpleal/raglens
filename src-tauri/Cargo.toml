@@ -1,6 +1,6 @@
 [package]
 name = "raglens"
-version = "0.1.9"
+version = "0.2.0"
 description = "WoW-addon-style overlay framework for Ragnarok Online"
 authors = ["adson"]
 edition = "2021"
@@ -24,7 +24,7 @@ test = false
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-store = "2"
 tauri-plugin-global-shortcut = "2"
@@ -32,6 +32,11 @@ tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 hex = "0.4"
+# Blocking HTTP client for fetching map minimap PNGs from divine-pride.net
+# on demand (see `map_image_cache.rs`). `default-features = false` +
+# `rustls-tls` keeps the binary self-contained and avoids the system
+# OpenSSL link on Windows.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls"] }
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.58", features = [

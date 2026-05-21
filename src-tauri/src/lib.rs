@@ -6,6 +6,7 @@ mod dispatch;
 mod foreground;
 mod interfaces;
 mod logger;
+mod map_image_cache;
 mod packet;
 mod pet_state_store;
 mod process;
@@ -77,6 +78,7 @@ pub fn run() {
             sounds::import_sound,
             sounds::list_sounds,
             sounds::read_sound,
+            map_image_cache::get_map_image_path,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

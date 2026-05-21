@@ -133,6 +133,23 @@ impl OpcodeLogger {
                 f.write_all(annotation.as_bytes())?;
             }
         }
+
+        // Surface teleport / map-change candidates. Two heuristics:
+        //   (a) known candidate opcodes (rAthena ZC_NPCACK_MAPMOVE
+        //       etc.) — always annotated with the parsed map+x+y if
+        //       the layout matches.
+        //   (b) any opcode whose payload contains a NUL-terminated
+        //       ASCII string ending in ".gat" — that's a Ragnarok
+        //       map filename, almost certainly a warp/map-change.
+        // The two together let the user search the log for
+        // `[warp]` and immediately see which opcode carries the
+        // teleport destination, regardless of whether the opcode is
+        // already known to the dispatcher.
+        if let Some(annotation) = warp_annotation(&prefix, opcode, payload) {
+            if let Some(f) = self.file.as_mut() {
+                f.write_all(annotation.as_bytes())?;
+            }
+        }
         Ok(())
     }
 
@@ -336,6 +353,132 @@ impl OpcodeLogger {
     }
 }
 
+/// Produces an additional `[warp] ...` annotation when a packet looks
+/// like a teleport / map-change. Two paths:
+///
+///  - **Known candidate opcodes**: rAthena's documented map-change
+///    opcodes (e.g. 0x0091 ZC_NPCACK_MAPMOVE) — when the length
+///    matches, parse out the map name (16 bytes from offset 2, NUL-
+///    padded, `.gat` stripped) and the x/y at offset 18-21.
+///
+///  - **`.gat` filename heuristic**: scan the payload for any NUL-
+///    terminated ASCII run ending in `.gat`. That's a Ragnarok map
+///    filename — almost certainly a teleport/warp/map-change packet
+///    regardless of opcode. Reports the position of the filename so
+///    the user can read the surrounding bytes for x/y.
+///
+/// Returns `None` for everything else (no extra line written, no
+/// scan cost beyond a single byte check for `.gat`-ish ASCII).
+fn warp_annotation(prefix: &str, opcode: u16, payload: &[u8]) -> Option<String> {
+    // Known candidates first — cheap match, gives a clean parsed
+    // line when the layout matches.
+    match opcode {
+        // ZC_NPCACK_MAPMOVE — Kafra/NPC-driven warp. Layout from
+        // rAthena packet_db: opcode(2) + map[16] + x(2) + y(2) = 22.
+        0x0091 if payload.len() >= 22 => {
+            let map = read_gat_name(&payload[2..18]);
+            let x = u16::from_le_bytes([payload[18], payload[19]]);
+            let y = u16::from_le_bytes([payload[20], payload[21]]);
+            return Some(format!(
+                "{prefix} | [warp] candidate=ZC_NPCACK_MAPMOVE map={map} x={x} y={y}\n",
+            ));
+        }
+        // ZC_NPCACK_SERVERMOVE — cross-server map change. Length 28:
+        // opcode(2) + map[16] + x(2) + y(2) + ip(4) + port(2).
+        0x0092 if payload.len() >= 22 => {
+            let map = read_gat_name(&payload[2..18]);
+            let x = u16::from_le_bytes([payload[18], payload[19]]);
+            let y = u16::from_le_bytes([payload[20], payload[21]]);
+            return Some(format!(
+                "{prefix} | [warp] candidate=ZC_NPCACK_SERVERMOVE map={map} x={x} y={y}\n",
+            ));
+        }
+        _ => {}
+    }
+
+    // Generic .gat-scan fallback. Hits any opcode whose payload
+    // embeds a map filename. Tiny linear walk; payloads are short.
+    if let Some((offset, map)) = find_gat_filename(payload) {
+        let map_end = offset + map.len() + ".gat".len();
+        // Most warp variants put x/y as the two u16 LE words right
+        // after the NUL-padded 16-byte map field. Show both that and
+        // "raw bytes immediately after the .gat string" so the user
+        // can pick whichever offset matches.
+        let map_field_end = offset + 16;
+        let (xy_aligned, xy_packed) = (
+            parse_xy(payload, map_field_end),
+            parse_xy(payload, map_end),
+        );
+        let mut suffix = String::new();
+        if let Some((x, y)) = xy_aligned {
+            suffix.push_str(&format!(" xy@off{}={}/{}", map_field_end, x, y));
+        }
+        if let Some((x, y)) = xy_packed {
+            if Some((x, y)) != xy_aligned {
+                suffix.push_str(&format!(" xy@off{}={}/{}", map_end, x, y));
+            }
+        }
+        return Some(format!(
+            "{prefix} | [warp] gat-match opcode=0x{opcode:04x} map={map} map_off={offset}{suffix}\n",
+        ));
+    }
+
+    None
+}
+
+/// Read a NUL-padded ASCII map filename and strip `.gat` if present.
+/// Same logic as `decoders::warp::read_map_name` but local so the
+/// logger module doesn't depend on a sibling decoder.
+fn read_gat_name(bytes: &[u8]) -> String {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    let raw = std::str::from_utf8(&bytes[..end]).unwrap_or("").to_string();
+    raw.strip_suffix(".gat").map(str::to_string).unwrap_or(raw)
+}
+
+/// Walk `payload` looking for a NUL-or-end-terminated ASCII run that
+/// ends with `.gat`. Returns the start offset of the run and the map
+/// name with `.gat` stripped. The run must be at least 5 bytes long
+/// (one char + `.gat`) and consist of printable ASCII so we don't
+/// false-match on binary noise that happens to contain the bytes
+/// `2e 67 61 74`.
+fn find_gat_filename(payload: &[u8]) -> Option<(usize, String)> {
+    const SUFFIX: &[u8] = b".gat";
+    if payload.len() < SUFFIX.len() + 1 {
+        return None;
+    }
+    let mut i = 0;
+    while i + SUFFIX.len() < payload.len() {
+        if &payload[i..i + SUFFIX.len()] == SUFFIX {
+            // Walk backwards to find the start of the printable run.
+            let mut start = i;
+            while start > 0 && is_map_name_char(payload[start - 1]) {
+                start -= 1;
+            }
+            if i - start >= 1 {
+                let name_bytes = &payload[start..i];
+                if let Ok(name) = std::str::from_utf8(name_bytes) {
+                    return Some((start, name.to_string()));
+                }
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+fn is_map_name_char(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || b == b'_' || b == b'-'
+}
+
+fn parse_xy(payload: &[u8], offset: usize) -> Option<(u16, u16)> {
+    if offset + 4 > payload.len() {
+        return None;
+    }
+    let x = u16::from_le_bytes([payload[offset], payload[offset + 1]]);
+    let y = u16::from_le_bytes([payload[offset + 2], payload[offset + 3]]);
+    Some((x, y))
+}
+
 /// Snapshot of the previous hunger tick for this connection, lifted
 /// out of the `pet_tracks` HashMap so the decision logic in
 /// `update_hunger` can use named fields instead of tuple indices.
@@ -480,6 +623,58 @@ mod tests {
             s_feed.contains("countdown=540"),
             "expected 540s from hunger=100 over 60s/3pt cadence, got: {s_feed}"
         );
+    }
+
+    #[test]
+    fn find_gat_filename_locates_run_and_strips_suffix() {
+        // Synthetic payload: 5 bytes of non-alphanumeric junk, then
+        // "prontera.gat\0\0\0\0". The junk has to be carefully chosen
+        // so the back-walk stops at the right boundary — anything
+        // ASCII-alphanumeric (digit, letter, underscore, dash) would
+        // be treated as part of the map name and extend the match.
+        let mut payload = vec![0xff, 0xab, 0x00, 0x12, 0xfe];
+        payload.extend_from_slice(b"prontera.gat");
+        payload.extend_from_slice(&[0, 0, 0, 0]);
+        let (off, name) = find_gat_filename(&payload).unwrap();
+        assert_eq!(off, 5);
+        assert_eq!(name, "prontera");
+    }
+
+    #[test]
+    fn find_gat_filename_skips_binary_noise() {
+        // The bytes 0x2e 0x67 0x61 0x74 (".gat") appear but are
+        // preceded by binary noise, so we shouldn't return them as a
+        // map filename.
+        let payload = [0xff, 0xfe, 0xfd, b'.', b'g', b'a', b't', 0, 0];
+        assert!(find_gat_filename(&payload).is_none());
+    }
+
+    #[test]
+    fn warp_annotation_known_opcode_parses_layout() {
+        let mut payload = vec![0x91, 0x00];
+        payload.extend_from_slice(b"izlude\0\0\0\0\0\0\0\0\0\0");
+        payload.extend_from_slice(&128u16.to_le_bytes());
+        payload.extend_from_slice(&111u16.to_le_bytes());
+        let line = warp_annotation("PRE", 0x0091, &payload).expect("annotation");
+        assert!(line.contains("ZC_NPCACK_MAPMOVE"));
+        assert!(line.contains("map=izlude"));
+        assert!(line.contains("x=128"));
+        assert!(line.contains("y=111"));
+    }
+
+    #[test]
+    fn warp_annotation_generic_gat_match() {
+        // Unknown opcode 0x0fff with a payload embedding "morocc.gat"
+        // — the .gat heuristic should still surface it even though
+        // the opcode isn't in the known-candidates list.
+        let mut payload = vec![0xff, 0x0f, 0x99, 0x99];
+        payload.extend_from_slice(b"morocc.gat\0\0\0\0\0\0");
+        payload.extend_from_slice(&42u16.to_le_bytes());
+        payload.extend_from_slice(&100u16.to_le_bytes());
+        let line = warp_annotation("PRE", 0x0fff, &payload).expect("annotation");
+        assert!(line.contains("gat-match"));
+        assert!(line.contains("opcode=0x0fff"));
+        assert!(line.contains("map=morocc"));
     }
 
     #[test]

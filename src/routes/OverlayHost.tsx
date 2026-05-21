@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
+import { LastTeleportControls } from "../addons/last-teleport/LastTeleportControls";
+import { LastTeleportMap } from "../addons/last-teleport/LastTeleportMap";
 import { PetFeeder } from "../addons/pet-feeder/PetFeeder";
 import { XpMeter } from "../addons/xp-meter/XpMeter";
 import { getAddon } from "../addons/registry";
@@ -18,12 +20,14 @@ import {
   getOverlayAlwaysVisible,
   getOverlayUserHidden,
 } from "../lib/store";
+import type { OverlayView } from "../lib/store";
 import { appearanceCssVars } from "../lib/appearance";
 import type { ClientInfo } from "../lib/types";
 import "../styles/overlay.css";
 
 type Props = {
   addonId: string;
+  view?: OverlayView;
 };
 
 const ADDON_COMPONENTS: Record<
@@ -32,11 +36,24 @@ const ADDON_COMPONENTS: Record<
 > = {
   "xp-meter": XpMeter,
   "pet-feeder": PetFeeder,
+  "last-teleport": LastTeleportMap,
 };
 
-export function OverlayHost({ addonId }: Props) {
+// Addons that own a second webview. Selected via `?view=secondary`
+// in the overlay's URL.
+const ADDON_SECONDARY_COMPONENTS: Record<
+  string,
+  React.FC<{ pid: number; client: ClientInfo | null }>
+> = {
+  "last-teleport": LastTeleportControls,
+};
+
+export function OverlayHost({ addonId, view = "primary" }: Props) {
   const manifest = getAddon(addonId);
-  const Component = ADDON_COMPONENTS[addonId];
+  const Component =
+    view === "secondary"
+      ? ADDON_SECONDARY_COMPONENTS[addonId]
+      : ADDON_COMPONENTS[addonId];
   const selectedPid = useSelectedPid();
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [alwaysVisible, setAlwaysVisible] = useState(false);
@@ -120,41 +137,54 @@ export function OverlayHost({ addonId }: Props) {
     };
   }, [selectedPid]);
 
-  // Lock the window's height to its content. The user can resize
-  // horizontally; vertical resize is blocked by setting min/max
-  // height to the same value (the OS enforces the constraint).
+  // Lock the window's height (and optionally width) to its content.
+  // For most addons the user can still resize horizontally; for
+  // addons that opt into `secondaryAutoSize` (last-teleport
+  // controls), width is also locked so the window snaps to its
+  // content in both dimensions.
   //
   // We use a "drain" loop instead of a single in-flight flag: the
   // ResizeObserver only updates a pending target, and a single
-  // drain task runs locks until pending == lastLocked. Without this,
-  // a rapid sequence — placeholder height → real content height
+  // drain task runs locks until pending == last-locked. Without
+  // this, a rapid sequence — placeholder size → real content size
   // arriving milliseconds later from the hydrate path — could land
   // the second fire while a lock is in flight, drop it, and leave
-  // the window stuck at the placeholder height with a webview-side
+  // the window stuck at the placeholder size with a webview-side
   // scrollbar over the overflowing content.
+  const lockBothDimensions = !!(
+    view === "secondary" && manifest?.secondaryAutoSize
+  );
   useEffect(() => {
     const el = shellRef.current;
     if (!el) return;
 
     let cancelled = false;
+    let pendingWidth = 0;
     let pendingHeight = 0;
+    let lastLockedWidth = 0;
     let lastLockedHeight = 0;
     let draining = false;
     const w = getCurrentWebviewWindow();
 
-    const lock = async (height: number): Promise<void> => {
+    const lock = async (width: number, height: number): Promise<void> => {
       try {
-        await w.setMinSize(new LogicalSize(80, height));
-        await w.setMaxSize(new LogicalSize(4096, height));
+        if (lockBothDimensions) {
+          await w.setMinSize(new LogicalSize(width, height));
+          await w.setMaxSize(new LogicalSize(width, height));
+        } else {
+          await w.setMinSize(new LogicalSize(80, height));
+          await w.setMaxSize(new LogicalSize(4096, height));
+        }
         const outer = await w.outerSize();
         const scale = await w.scaleFactor();
         const curW = Math.round(outer.width / scale);
         const curH = Math.round(outer.height / scale);
-        if (curH !== height) {
-          await w.setSize(new LogicalSize(curW, height));
+        const targetW = lockBothDimensions ? width : curW;
+        if (curW !== targetW || curH !== height) {
+          await w.setSize(new LogicalSize(targetW, height));
         }
       } catch (e) {
-        console.warn("[overlay] height lock failed:", e);
+        console.warn("[overlay] size lock failed:", e);
       }
     };
 
@@ -166,11 +196,14 @@ export function OverlayHost({ addonId }: Props) {
       while (
         !cancelled &&
         pendingHeight > 0 &&
-        pendingHeight !== lastLockedHeight
+        (pendingHeight !== lastLockedHeight ||
+          (lockBothDimensions && pendingWidth !== lastLockedWidth))
       ) {
-        const target = pendingHeight;
-        await lock(target);
-        lastLockedHeight = target;
+        const targetW = pendingWidth;
+        const targetH = pendingHeight;
+        await lock(targetW, targetH);
+        lastLockedWidth = targetW;
+        lastLockedHeight = targetH;
       }
       draining = false;
     };
@@ -178,6 +211,9 @@ export function OverlayHost({ addonId }: Props) {
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
+      pendingWidth = Math.ceil(
+        entry.borderBoxSize?.[0]?.inlineSize ?? entry.contentRect.width,
+      );
       pendingHeight = Math.ceil(
         entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height,
       );
@@ -189,7 +225,7 @@ export function OverlayHost({ addonId }: Props) {
       cancelled = true;
       observer.disconnect();
     };
-  }, [addonId]);
+  }, [addonId, lockBothDimensions]);
 
   // Visibility:
   //  - userHidden (toggled via global shortcut) → hidden, full stop.

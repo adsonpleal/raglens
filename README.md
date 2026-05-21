@@ -13,7 +13,7 @@ modificado.
 
 ## ⬇ Download
 
-[**raglens-v0.1.9-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.1.9-setup.exe)
+[**raglens-v0.2.0-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.2.0-setup.exe)
 — instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
 embutido; basta executar e seguir o instalador. O Raglens é configurado
 para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
@@ -49,6 +49,7 @@ do arquivo baixado com o `SHA256SUMS.txt` da mesma release.
 | **Medidor de Experiência** | XP/min, %/min e tempo até o próximo nível (base e job). Janela de tempo configurável (1 / 3 / 5 / 15 / 30 / 60 min ou personalizado). Atalho global padrão `Alt+Shift+E` pra mostrar/esconder. | Funcional |
 | **Informações de Mascote** | Mostra fome, intimidade, nível e nome do pet. A contagem regressiva até a próxima troca de estado é calibrada por `petType` a partir da primeira queda observada (modelo de tick discreto, persistido em `raglens.json`) — sessões seguintes começam com o timer certo desde o primeiro frame. Alertas sonoros (one-shot ou em loop, com som da biblioteca embutida ou `.wav`/`.mp3` importado) na entrada da faixa ideal (26–75, oportunidade de loyalty) e da zona de perigo (≤ 25, pet pode fugir). **Notificações por push (ntfy.sh) e Windows nativo** em matriz 3×2 (faixa ideal / perigo / alimentado × push / Windows) — desktop silencioso com push no celular, ou vice-versa. Atalho global padrão `Alt+Shift+J`. | Funcional |
 | **Aviso de Desconexão** | Addon *headless* (sem overlay) que notifica via toast do Windows e/ou push do ntfy.sh quando o cliente é desconectado do servidor de forma inesperada. Cobre três sinais: RST TCP no soquete do jogo, timeout silencioso (30 s sem pacote com o processo ainda vivo) e ZC_NOTIFY_BAN (`0x0081`, kick do servidor com código de razão). Sair pela seleção de personagem não dispara — o backend supressona o RST/FIN que segue o ZC_RESTART_ACK numa janela de 5 s. | Funcional |
+| **Última Localização** | Addon de duas janelas que registra os últimos pontos de onde você teleportou e desenha marcadores sobre uma imagem real do minimapa (baixada sob demanda do divine-pride.net e cacheada em disco). A janela do mapa muda de forma a cada mapa para combinar com a proporção real do PNG (1 célula = 1 pixel); a janela de controles é um widget mínimo com `◀ ▶ 📋` — botões pra navegar o histórico e copiar `/navi mapa X/Y` pra área de transferência. Útil pra voltar onde caiu um item, ficou um MVP vivo ou caiu uma carta depois de uma sequência de Fly Wing. Atalhos globais configuráveis (`Alt+Shift+←/→/C`). | Funcional |
 
 A lista cresce; cada addon vive em `src/addons/<id>/` com seu manifesto,
 componente React e (quando aplicável) decodificador em

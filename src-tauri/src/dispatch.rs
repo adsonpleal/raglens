@@ -21,9 +21,10 @@
 
 use crate::connections::{emit_client_detected, ConnectionsState, FourTuple};
 use crate::decoders;
+use crate::decoders::warp::TeleportLocation;
 use crate::logger::OpcodeLogger;
 use serde::Serialize;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "kebab-case")]
@@ -90,10 +91,73 @@ pub fn dispatch_packet(
 
         if let Some(decoder) = decoders::lookup(opcode) {
             decoder(app, ft, direction, pkt);
+        } else if matches!(direction, Direction::ToClient) {
+            // Fallback: catch S→C packets with an unknown opcode whose
+            // payload still carries a `.gat` map name at the standard
+            // offset — covers custom map-change opcodes some private
+            // servers use. C→S packets never carry map names so we
+            // skip them; the per-packet hot-path cost matters because
+            // this runs on every unknown opcode in every segment.
+            maybe_emit_gat_teleport(app, ft, pkt);
         }
 
         offset += len;
     }
+}
+
+/// Match the standard map-change layout (`opcode(2) + map[16] +
+/// x(2) + y(2)`, optionally followed by extra bytes) and emit a
+/// `packet:teleport-location` event if it does. Conservative — only
+/// fires when bytes 2..18 are a printable-ASCII filename ending in
+/// `.gat` AND the parsed coords are < 2048 (the largest cell dim any
+/// real RO map uses). The cheap first-byte gate at the top bails on
+/// the overwhelming majority of unknown packets before any string
+/// work.
+fn maybe_emit_gat_teleport(app: &AppHandle, ft: &FourTuple, payload: &[u8]) {
+    if payload.len() < 22 {
+        return;
+    }
+    // First byte of a map name is always an ASCII letter or digit.
+    // Cheap reject for the common case (most unknown packets here
+    // are NPC chats, mob spawns, etc., none of which start with one).
+    let first = payload[2];
+    if !first.is_ascii_alphanumeric() {
+        return;
+    }
+    let map = match parse_gat_field(&payload[2..18]) {
+        Some(m) => m,
+        None => return,
+    };
+    let x = u16::from_le_bytes([payload[18], payload[19]]);
+    let y = u16::from_le_bytes([payload[20], payload[21]]);
+    if x >= 2048 || y >= 2048 {
+        return;
+    }
+    let pid = app.state::<ConnectionsState>().pid_for(ft);
+    let _ = app.emit(
+        "packet:teleport-location",
+        TeleportLocation { pid, map, x, y },
+    );
+}
+
+/// Decode a 16-byte map-name field: NUL-terminated (or full-width),
+/// must be printable ASCII, must end with `.gat`. Returns the bare
+/// map name (no `.gat`) on success. ASCII-only is required (so the
+/// printable-byte check is also a valid-UTF-8 check, no separate
+/// `from_utf8` round-trip needed).
+fn parse_gat_field(bytes: &[u8]) -> Option<String> {
+    let end = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+    let body = &bytes[..end];
+    if !body.iter().all(|&b| (0x20..=0x7e).contains(&b)) {
+        return None;
+    }
+    let bare = body.strip_suffix(b".gat")?;
+    if bare.is_empty() {
+        return None;
+    }
+    // SAFETY: the printable-ASCII check above proves the bytes are
+    // valid UTF-8 (any subset of ASCII is valid UTF-8).
+    Some(unsafe { std::str::from_utf8_unchecked(bare) }.to_string())
 }
 
 /// Returns the length in bytes of the Ragnarok packet starting at the
@@ -152,6 +216,19 @@ fn fixed_packet_length(opcode: u16) -> Option<usize> {
         0x099b => 8,   // ZC_MAPPROPERTY_R2
         0x0984 => 6,   // ZC_MSG_SKILL
         0x0a30 => 102, // ZC_ACK_REQNAME_TITLE
+        0x0ac5 => 64,  // latamRO ZC_NPCACK_MAPMOVE-on-char-select: 64-byte
+                       // packet carrying the player's starting map after
+                       // char select. Layout: opcode(2) + AID(4) + map[16]
+                       // + x(2) + y(2) + ip(4) + port(2) + hostname[N].
+                       // The standard 0x0091/0x0092 don't fire on
+                       // latamRO; this is the equivalent for the very
+                       // first map load of the session.
+        0x0ac7 => 64,  // latamRO ZC_NPCACK_MAPMOVE-on-zone-change: 64-byte
+                       // packet for in-game portal walks / zone transfers.
+                       // Layout: opcode(2) + map[16] + x(2) + y(2) +
+                       // ip(4) + port(2) + hostname[N]. Same as 0x0092
+                       // but with the new zone-server address given as a
+                       // hostname instead of just IPv4.
         0x0acb => 12,  // ZC_LONGPAR_CHANGE (i64)
         0x0acc => 18,  // ZC_NOTIFY_EXP
         0x0b1b => 2,   // ZC_INVENTORY_END
@@ -215,6 +292,31 @@ mod tests {
         // length 2 < minimum 4
         let buf = [0, 0, 2, 0, 0, 0];
         assert!(variable_packet_length(&buf).is_none());
+    }
+
+    #[test]
+    fn parse_gat_field_accepts_standard_layout() {
+        let mut bytes = [0u8; 16];
+        bytes[..12].copy_from_slice(b"prontera.gat");
+        assert_eq!(parse_gat_field(&bytes).as_deref(), Some("prontera"));
+    }
+
+    #[test]
+    fn parse_gat_field_rejects_non_ascii_or_no_extension() {
+        // Missing `.gat` suffix.
+        let mut bytes = [0u8; 16];
+        bytes[..8].copy_from_slice(b"prontera");
+        assert!(parse_gat_field(&bytes).is_none());
+
+        // High-bit / non-printable bytes before NUL.
+        let mut bytes = [0u8; 16];
+        bytes[..4].copy_from_slice(&[0xff, 0xab, 0x00, 0x00]);
+        assert!(parse_gat_field(&bytes).is_none());
+
+        // Empty bare name (`.gat` only).
+        let mut bytes = [0u8; 16];
+        bytes[..4].copy_from_slice(b".gat");
+        assert!(parse_gat_field(&bytes).is_none());
     }
 
     #[test]

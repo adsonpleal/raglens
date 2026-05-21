@@ -11,7 +11,9 @@ import type {
   ForegroundChanged,
   PetFedRequest,
   PetStateUpdate,
+  PlayerPositionUpdate,
   SelectedClient,
+  TeleportLocationUpdate,
 } from "./types";
 
 export function onCaptureStarted(handler: () => void): Promise<UnlistenFn> {
@@ -61,6 +63,13 @@ export type OverlayConfigChanged = {
   addon_id: string;
   always_visible?: boolean;
   user_hidden?: boolean;
+  /** New locked state. Normally the lock is enforced at OS level via
+   *  `setIgnoreCursorEvents`, but addons with
+   *  `manifest.interactiveWhenLocked` opt out of that and instead
+   *  read this value to gate their own drag / pointer-events styling
+   *  (e.g. last-teleport disables drag and absorbs background clicks
+   *  while locked so the toolbar buttons stay alive). */
+  locked?: boolean;
   /** Set true when the addon-specific config (the modal-driven blob
    *  at `addon.<id>.config`) changed. Overlays re-read the config
    *  via `getAddonConfig` rather than receiving it in the payload —
@@ -105,6 +114,22 @@ export function onPetFedRequest(
   handler: (event: PetFedRequest) => void,
 ): Promise<UnlistenFn> {
   return listen<PetFedRequest>("packet:pet-fed-request", (e) =>
+    handler(e.payload),
+  );
+}
+
+export function onTeleportLocation(
+  handler: (update: TeleportLocationUpdate) => void,
+): Promise<UnlistenFn> {
+  return listen<TeleportLocationUpdate>("packet:teleport-location", (e) =>
+    handler(e.payload),
+  );
+}
+
+export function onPlayerPosition(
+  handler: (update: PlayerPositionUpdate) => void,
+): Promise<UnlistenFn> {
+  return listen<PlayerPositionUpdate>("packet:player-position", (e) =>
     handler(e.payload),
   );
 }

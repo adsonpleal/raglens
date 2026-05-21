@@ -1,0 +1,76 @@
+/* Controls-only window — small content-driven widget. Both width
+ * AND height auto-size to content via OverlayHost's
+ * ResizeObserver (the manifest opts in with `secondaryAutoSize`).
+ * `controlsUiScale` zooms the layout; the window snaps to the new
+ * size after each zoom. The shell override below makes the
+ * resize-observer-tracked element itself report content-width
+ * (not the window's full width) so the lock has a stable target. */
+
+.overlay-shell:has(.lt-controls) {
+  width: fit-content;
+}
+
+.lt-controls {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px;
+  box-sizing: border-box;
+  font-family: "Gulim", "GulimChe", "Dotum", Tahoma, "Lucida Sans Unicode",
+    sans-serif;
+  font-weight: bold;
+  color: var(--overlay-fg, #ffffff);
+  text-shadow:
+    1px 0 0 var(--overlay-outline, #000),
+    -1px 0 0 var(--overlay-outline, #000),
+    0 1px 0 var(--overlay-outline, #000),
+    0 -1px 0 var(--overlay-outline, #000);
+}
+
+/* Locked: the root absorbs background clicks so the JS drag
+ * handler never fires; the toolbar + label opt back in so the
+ * user can still cycle history and copy navi while locked. */
+.lt-controls--locked {
+  pointer-events: none;
+}
+.lt-controls--locked .lt-controls__toolbar {
+  pointer-events: auto;
+}
+
+.lt-controls__toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 4px;
+  align-self: flex-start;
+}
+
+.lt-controls__btn {
+  appearance: none;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 3px;
+  color: var(--overlay-fg, #ffffff);
+  font-family: inherit;
+  font-weight: bold;
+  font-size: 11px;
+  padding: 2px 6px;
+  cursor: pointer;
+  min-width: 22px;
+  line-height: 1;
+}
+.lt-controls__btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+}
+.lt-controls__btn:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.22);
+}
+.lt-controls__btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.lt-controls__btn--copy {
+  min-width: 28px;
+}
+

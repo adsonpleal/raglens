@@ -101,6 +101,32 @@ export type PetFedRequest = {
   pid: number | null;
 };
 
+/** Fired by the warp decoder (0x0091 ZC_NPCACK_MAPMOVE) for each
+ *  observed teleport / map-change. The `last-teleport` addon's
+ *  hook uses it together with `PlayerPositionUpdate` to know
+ *  where the player actually was when each warp fired.
+ *  Coordinates are cell coords (the same units `/navi map X/Y`
+ *  accepts). */
+export type TeleportLocationUpdate = {
+  pid: number | null;
+  map: string;
+  x: number;
+  y: number;
+};
+
+/** Fired by the player-move decoder (0x0087 ZC_NOTIFY_PLAYERMOVE)
+ *  on every step the player takes inside a map. Carries the
+ *  destination cell of the move (where they're going next) — the
+ *  `last-teleport` hook treats it as the player's current standing
+ *  position so the next warp's "from" is accurate. No map field:
+ *  in-map movement doesn't change maps; the map is whatever the
+ *  last warp set. */
+export type PlayerPositionUpdate = {
+  pid: number | null;
+  x: number;
+  y: number;
+};
+
 export type CaptureStats = {
   packets_seen: number;
   matched: number;

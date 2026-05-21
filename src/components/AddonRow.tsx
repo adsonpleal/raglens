@@ -11,6 +11,7 @@ type Props = {
   onLockToggle: (value: boolean) => void;
   onAlwaysVisibleToggle: (value: boolean) => void;
   onConfigure: () => void;
+  onInfo: () => void;
 };
 
 export function AddonRow({
@@ -22,6 +23,7 @@ export function AddonRow({
   onLockToggle,
   onAlwaysVisibleToggle,
   onConfigure,
+  onInfo,
 }: Props) {
   return (
     <li className="addon-row">
@@ -30,6 +32,16 @@ export function AddonRow({
         <span className="muted">{manifest.description}</span>
       </div>
       <div className="addon-controls">
+        {manifest.hasInfoModal && (
+          <button
+            className="ghost icon-button"
+            onClick={onInfo}
+            title="Como funciona"
+            aria-label={`Informações sobre ${manifest.name}`}
+          >
+            ?
+          </button>
+        )}
         {enabled && (
           <>
             {hasOverlay(manifest) && (
