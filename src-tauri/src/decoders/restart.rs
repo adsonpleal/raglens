@@ -17,6 +17,7 @@
 use crate::connections::{ConnectionsState, FourTuple};
 use crate::disconnect::RecentRestarts;
 use crate::dispatch::Direction;
+use crate::inventory_store::InventoryStore;
 use crate::pet_state_store::PetStateStore;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -45,6 +46,11 @@ pub fn decode(app: &AppHandle, ft: &FourTuple, _dir: Direction, payload: &[u8]) 
     // hunger.
     if let Some(p) = pid {
         app.state::<PetStateStore>().clear(p);
+        // Also drop the inventory snapshot — the next character's
+        // bag is a different set of items, and 0x01a3 feeds without
+        // a fresh char-select dump would decrement against stale
+        // slot data.
+        app.state::<InventoryStore>().clear(p);
         // Tell the disconnect detectors to ignore the FIN/RST that
         // immediately follow this intentional logout — without this,
         // the player gets a "desconectado" toast every time they go

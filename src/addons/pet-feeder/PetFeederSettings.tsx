@@ -30,7 +30,7 @@ const APPEARANCE_ROWS: ReadonlyArray<{
   { key: "showHunger", label: "Fome (estágio + valor)" },
   { key: "showTimer", label: "Tempo até o próximo estágio" },
   { key: "showIntimacy", label: "Lealdade (♥)" },
-  { key: "showLevel", label: "Level" },
+  { key: "showFood", label: "Quantidade de comida no inventário" },
 ];
 
 export function PetFeederSettings() {

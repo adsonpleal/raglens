@@ -5,6 +5,7 @@ mod disconnect;
 mod dispatch;
 mod foreground;
 mod interfaces;
+mod inventory_store;
 mod logger;
 mod map_image_cache;
 mod packet;
@@ -54,6 +55,7 @@ pub fn run() {
         .manage(ConnectionsState::default())
         .manage(ForegroundWatcherState::default())
         .manage(pet_state_store::PetStateStore::default())
+        .manage(inventory_store::InventoryStore::default())
         .manage(disconnect::RecentRestarts::default())
         .manage(disconnect::RecentEmits::default())
         .setup(|app| {
@@ -75,6 +77,7 @@ pub fn run() {
             foreground::get_foreground_pid,
             raglens_pid,
             pet_state_store::get_pet_state,
+            inventory_store::get_food_count,
             sounds::import_sound,
             sounds::list_sounds,
             sounds::read_sound,

@@ -1,0 +1,422 @@
+{
+  "1002": {
+    "food_item_id": 531,
+    "food_name": "Apple_Juice"
+  },
+  "1004": {
+    "food_item_id": 6108,
+    "food_name": "Apple_Pudding"
+  },
+  "1005": {
+    "food_item_id": 1000889,
+    "food_name": "Mixed_Fruits_Juice"
+  },
+  "1010": {
+    "food_item_id": 1066,
+    "food_name": "Tree_Of_Archer_1"
+  },
+  "1011": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1014": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1019": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1023": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1026": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1029": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1031": {
+    "food_item_id": 511,
+    "food_name": "Green_Herb"
+  },
+  "1035": {
+    "food_item_id": 716,
+    "food_name": "Red_Gemstone"
+  },
+  "1040": {
+    "food_item_id": 6111,
+    "food_name": "Mystic_Stone"
+  },
+  "1041": {
+    "food_item_id": 934,
+    "food_name": "Mementos"
+  },
+  "1042": {
+    "food_item_id": 1002,
+    "food_name": "Iron_Ore"
+  },
+  "1049": {
+    "food_item_id": 507,
+    "food_name": "Red_Herb"
+  },
+  "1052": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1056": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1057": {
+    "food_item_id": 532,
+    "food_name": "Banana_Juice"
+  },
+  "1058": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1063": {
+    "food_item_id": 534,
+    "food_name": "Carrot_Juice"
+  },
+  "1077": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1087": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1090": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1096": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1101": {
+    "food_item_id": 518,
+    "food_name": "Honey"
+  },
+  "1106": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1107": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1109": {
+    "food_item_id": 711,
+    "food_name": "Shoot"
+  },
+  "1110": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1113": {
+    "food_item_id": 508,
+    "food_name": "Yellow_Herb"
+  },
+  "1122": {
+    "food_item_id": 7821,
+    "food_name": "Green_Apple"
+  },
+  "1123": {
+    "food_item_id": 7821,
+    "food_name": "Green_Apple"
+  },
+  "1125": {
+    "food_item_id": 7821,
+    "food_name": "Green_Apple"
+  },
+  "1143": {
+    "food_item_id": 6098,
+    "food_name": "Small_Snow_Flower"
+  },
+  "1148": {
+    "food_item_id": 6108,
+    "food_name": "Apple_Pudding"
+  },
+  "1150": {
+    "food_item_id": 25377,
+    "food_name": "High_Class_Pet_food"
+  },
+  "1155": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1166": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1167": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1170": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1179": {
+    "food_item_id": 6100,
+    "food_name": "Damp_Darkness"
+  },
+  "1180": {
+    "food_item_id": 25231,
+    "food_name": "Suspicious_Bottle"
+  },
+  "1188": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1190": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1198": {
+    "food_item_id": 1000552,
+    "food_name": "Evil_Water"
+  },
+  "1200": {
+    "food_item_id": 929,
+    "food_name": "Immortal_Heart"
+  },
+  "1208": {
+    "food_item_id": 7824,
+    "food_name": "Spirit_Liquor"
+  },
+  "1213": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1214": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1242": {
+    "food_item_id": 6534,
+    "food_name": "Fruit_Sundae"
+  },
+  "1245": {
+    "food_item_id": 911,
+    "food_name": "Scell"
+  },
+  "1269": {
+    "food_item_id": 6111,
+    "food_name": "Mystic_Stone"
+  },
+  "1275": {
+    "food_item_id": 504,
+    "food_name": "White_Potion"
+  },
+  "1297": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1299": {
+    "food_item_id": 6104,
+    "food_name": "Big_Cell"
+  },
+  "1301": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1307": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1369": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1370": {
+    "food_item_id": 6113,
+    "food_name": "Vital_Flower_"
+  },
+  "1374": {
+    "food_item_id": 6110,
+    "food_name": "Vital_Flower"
+  },
+  "1379": {
+    "food_item_id": 6112,
+    "food_name": "Fresh_Plant"
+  },
+  "1382": {
+    "food_item_id": 7823,
+    "food_name": "Meat_Veg_Skewer"
+  },
+  "1385": {
+    "food_item_id": 7822,
+    "food_name": "Whole_Barbecue"
+  },
+  "1401": {
+    "food_item_id": 6099,
+    "food_name": "Grilled_Rice_Cake"
+  },
+  "1404": {
+    "food_item_id": 6106,
+    "food_name": "Well_Ripened_Berry"
+  },
+  "1416": {
+    "food_item_id": 6105,
+    "food_name": "Morning_Dew"
+  },
+  "1495": {
+    "food_item_id": 6109,
+    "food_name": "Plant_Neutrient"
+  },
+  "1504": {
+    "food_item_id": 6107,
+    "food_name": "Sunset_On_The_Rock"
+  },
+  "1505": {
+    "food_item_id": 6097,
+    "food_name": "Pumpkin_Pie_"
+  },
+  "1512": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1513": {
+    "food_item_id": 6095,
+    "food_name": "Flavored_Alcohol"
+  },
+  "1519": {
+    "food_item_id": 6115,
+    "food_name": "Bun_"
+  },
+  "1586": {
+    "food_item_id": 6096,
+    "food_name": "Fish_With_Blue_Back"
+  },
+  "1622": {
+    "food_item_id": 25233,
+    "food_name": "Wad_Of_Cotton"
+  },
+  "1630": {
+    "food_item_id": 6094,
+    "food_name": "Traditional_Cookie"
+  },
+  "1631": {
+    "food_item_id": 6115,
+    "food_name": "Bun_"
+  },
+  "1632": {
+    "food_item_id": 25232,
+    "food_name": "Cheap_Lubricant"
+  },
+  "1735": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1736": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1737": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1754": {
+    "food_item_id": 6105,
+    "food_name": "Morning_Dew"
+  },
+  "1773": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "1782": {
+    "food_item_id": 7564,
+    "food_name": "Rotten_Meat"
+  },
+  "1815": {
+    "food_item_id": 511,
+    "food_name": "Green_Herb"
+  },
+  "1837": {
+    "food_item_id": 6114,
+    "food_name": "Flame_Gemstone"
+  },
+  "1879": {
+    "food_item_id": 7766,
+    "food_name": "Bok_Choy"
+  },
+  "1963": {
+    "food_item_id": 554,
+    "food_name": "Mojji"
+  },
+  "2200": {
+    "food_item_id": 512,
+    "food_name": "Apple"
+  },
+  "2210": {
+    "food_item_id": 529,
+    "food_name": "Candy"
+  },
+  "2313": {
+    "food_item_id": 528,
+    "food_name": "Monster's_Feed"
+  },
+  "2336": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "2398": {
+    "food_item_id": 531,
+    "food_name": "Apple_Juice"
+  },
+  "2995": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3023": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3495": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3496": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3636": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3669": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3670": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "3790": {
+    "food_item_id": 529,
+    "food_name": "Candy"
+  },
+  "20373": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "20420": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  },
+  "20696": {
+    "food_item_id": 1000227,
+    "food_name": "Cloud_Cotton"
+  },
+  "20697": {
+    "food_item_id": 537,
+    "food_name": "Pet_Food"
+  }
+}

@@ -53,6 +53,15 @@ export function getPetState(pid: number): Promise<CachedPetState | null> {
   return invoke("get_pet_state", { pid });
 }
 
+/** Live count of `itemId` across the player's inventory slots for
+ *  this PID, as last seen by the backend's inventory store. Returns
+ *  0 when the backend has no cached snapshot (overlay mounted before
+ *  the char-select dump) — the caller should treat that as "unknown"
+ *  and re-query on the next `packet:inventory-snapshot` event. */
+export function getFoodCount(pid: number, itemId: number): Promise<number> {
+  return invoke("get_food_count", { pid, itemId });
+}
+
 /** On-disk path to the cached minimap PNG for a map, fetched from
  *  divine-pride.net on first reference. Returns `null` when the
  *  service has no image for that map (the addon then renders a

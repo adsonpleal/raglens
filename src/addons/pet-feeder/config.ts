@@ -12,7 +12,10 @@ export type PetFeederConfig = {
   showHeader: boolean;
   showName: boolean;
   showHunger: boolean;
-  showLevel: boolean;
+  /** Show the count of the active pet's designated food in the
+   *  player's inventory. Renders "Comida: —" for pets whose food we
+   *  don't have mapped in `pet_food_db.json` (latamRO custom pets). */
+  showFood: boolean;
   showIntimacy: boolean;
   showTimer: boolean;
 
@@ -43,9 +46,11 @@ export type PetFeederConfig = {
   pushOptimal: boolean;
   pushDanger: boolean;
   pushFed: boolean;
+  pushLowFood: boolean;
   winOptimal: boolean;
   winDanger: boolean;
   winFed: boolean;
+  winLowFood: boolean;
 
   uiScale: number; // 0.5..2.0
 };
@@ -54,7 +59,7 @@ export const petFeederDefaultConfig: PetFeederConfig = {
   showHeader: true,
   showName: true,
   showHunger: true,
-  showLevel: false,
+  showFood: true,
   showIntimacy: true,
   showTimer: true,
 
@@ -75,17 +80,26 @@ export const petFeederDefaultConfig: PetFeederConfig = {
   pushOptimal: true,
   pushDanger: true,
   pushFed: false,
+  pushLowFood: true,
   winOptimal: true,
   winDanger: true,
   winFed: false,
+  winLowFood: true,
 
   uiScale: 1,
 };
 
 /** Logical notification events. Two channels (push, Windows) each
  *  with their own enable bool, surfaced together in the settings
- *  table. */
-export type PetNotificationEvent = "optimal" | "danger" | "fed";
+ *  table. `lowFood` fires once when the active pet's food count
+ *  crosses into the critical band (≤ 10 units in inventory). */
+export type PetNotificationEvent = "optimal" | "danger" | "fed" | "lowFood";
+
+/** Threshold for the `lowFood` notification, in inventory units of
+ *  the active pet's food. Fires on the transition from > threshold
+ *  to ≤ threshold; refilling above the threshold re-arms it. Not
+ *  user-configurable yet — surface as a setting if anyone asks. */
+export const LOW_FOOD_THRESHOLD = 10;
 
 export const PET_NOTIFICATION_EVENTS: ReadonlyArray<{
   id: PetNotificationEvent;
@@ -110,6 +124,12 @@ export const PET_NOTIFICATION_EVENTS: ReadonlyArray<{
     label: "Alimentado (lealdade ganha)",
     pushKey: "pushFed",
     winKey: "winFed",
+  },
+  {
+    id: "lowFood",
+    label: `Pouca comida (≤ ${LOW_FOOD_THRESHOLD})`,
+    pushKey: "pushLowFood",
+    winKey: "winLowFood",
   },
 ];
 

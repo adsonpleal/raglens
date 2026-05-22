@@ -13,8 +13,11 @@ export const petFeederManifest: AddonManifest = {
   defaultSize: { width: 180, height: 110 },
   // ZC_PROPERTY_PET (0x01a2) for the snapshot when the pet info window
   // opens + ZC_CHANGESTATE_PET (0x01a4) for the hunger / intimacy
-  // ticks. Decoded in src-tauri/src/decoders/pet_state.rs.
-  requiredOpcodes: [0x01a2, 0x01a4],
+  // ticks. Decoded in src-tauri/src/decoders/pet_state.rs. Also
+  // ZC_FEED_PET (0x01a3) for the consumed-food id and the inventory
+  // V6 stream (0x0B08/0B09/0B0B) for the char-select dump — together
+  // these drive the "Comida: N" chip.
+  requiredOpcodes: [0x01a2, 0x01a3, 0x01a4, 0x0b08, 0x0b09, 0x0b0b],
   entryRoute: "pet-feeder",
   defaultShortcut: "Alt+Shift+J",
 };

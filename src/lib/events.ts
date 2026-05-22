@@ -9,6 +9,8 @@ import type {
   ExpGain,
   ExpTotalUpdate,
   ForegroundChanged,
+  InventoryDelta,
+  InventorySnapshot,
   PetFedRequest,
   PetStateUpdate,
   PlayerPositionUpdate,
@@ -114,6 +116,22 @@ export function onPetFedRequest(
   handler: (event: PetFedRequest) => void,
 ): Promise<UnlistenFn> {
   return listen<PetFedRequest>("packet:pet-fed-request", (e) =>
+    handler(e.payload),
+  );
+}
+
+export function onInventorySnapshot(
+  handler: (event: InventorySnapshot) => void,
+): Promise<UnlistenFn> {
+  return listen<InventorySnapshot>("packet:inventory-snapshot", (e) =>
+    handler(e.payload),
+  );
+}
+
+export function onInventoryDelta(
+  handler: (event: InventoryDelta) => void,
+): Promise<UnlistenFn> {
+  return listen<InventoryDelta>("packet:inventory-delta", (e) =>
     handler(e.payload),
   );
 }

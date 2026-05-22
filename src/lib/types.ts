@@ -101,6 +101,32 @@ export type PetFedRequest = {
   pid: number | null;
 };
 
+/** Fired by the inventory decoder on each 0x0B09 NORMAL chunk of the
+ *  char-select dump. The frontend reacts by re-querying `getFoodCount`
+ *  for whatever item id the active pet eats. We don't ship the full
+ *  inventory in the payload — the overlay only needs one number, and
+ *  the backend already has the snapshot to answer follow-up reads.
+ *  Multiple events fire during a single dump (one per NORMAL chunk)
+ *  because the V6 stream's END is unreliable on latamRO. */
+export type InventorySnapshot = {
+  pid: number | null;
+};
+
+/** Fired by the pet feed-ack decoder (0x01a3) on a successful feed.
+ *  Carries the new total count of the consumed item id, so the chip
+ *  updates without a follow-up backend query. */
+export type InventoryDelta = {
+  pid: number | null;
+  /** Item id the server says was consumed. Matches what the bundled
+   *  pet_food_db maps for the active pet, in the normal case. */
+  item_id: number;
+  /** New total across all slots after the consumption. `null` when
+   *  the backend had no snapshot to decrement (overlay started mid-
+   *  session and missed the char-select dump) — the consumer should
+   *  keep its current foodCount instead of flashing "0". */
+  remaining: number | null;
+};
+
 /** Fired by the warp decoder (0x0091 ZC_NPCACK_MAPMOVE) for each
  *  observed teleport / map-change. The `last-teleport` addon's
  *  hook uses it together with `PlayerPositionUpdate` to know

@@ -196,3 +196,27 @@ export async function setPetHungerTick(
   await store.set("addon.pet-feeder.ticks", ticks);
   await store.save();
 }
+
+/** Pet-type → food item id, learned at runtime from observed
+ *  ZC_FEED_PET (0x01a3) packets. The bundled `pet_food_db.json` is
+ *  the rAthena master snapshot and misses anything latamRO added
+ *  beyond mainline — e.g. custom mob ids in the 22000+ range. Once
+ *  the player feeds their pet once, we record the (pet_type, food_id)
+ *  pair here so the chip works on every subsequent session even
+ *  without a pet_db update. Persisted in raglens.json. */
+export type LearnedPetFoods = Record<string, number>;
+
+export async function getLearnedPetFoods(): Promise<LearnedPetFoods> {
+  return (await store.get<LearnedPetFoods>("addon.pet-feeder.foods")) ?? {};
+}
+
+export async function setLearnedPetFood(
+  petType: number,
+  foodItemId: number,
+): Promise<void> {
+  const foods = await getLearnedPetFoods();
+  if (foods[String(petType)] === foodItemId) return; // already recorded
+  foods[String(petType)] = foodItemId;
+  await store.set("addon.pet-feeder.foods", foods);
+  await store.save();
+}

@@ -231,6 +231,11 @@ fn fixed_packet_length(opcode: u16) -> Option<usize> {
                        // hostname instead of just IPv4.
         0x0acb => 12,  // ZC_LONGPAR_CHANGE (i64)
         0x0acc => 18,  // ZC_NOTIFY_EXP
+        0x0b0b => 4,   // ZC_INVENTORY_END (V6 form): op(2) + invType(1) + result(1).
+                       // Bytes 2-3 are (invType, result), so the variable-
+                       // length fallback reads them as a tiny u16 length
+                       // and BAILs — without this fixed entry, every
+                       // char-select dump would lose the inner items.
         0x0b1b => 2,   // ZC_INVENTORY_END
         _ => return None,
     })

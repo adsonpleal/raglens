@@ -11,6 +11,7 @@ import {
   type HungerStage,
 } from "./format";
 import {
+  LOW_FOOD_THRESHOLD,
   PET_NOTIFICATION_EVENTS,
   petFeederDefaultConfig,
   type PetFeederConfig,
@@ -48,7 +49,8 @@ export function PetFeeder({ pid, client: _client }: Props) {
   const {
     hunger,
     intimacy,
-    level,
+    foodCount,
+    foodItemId,
     name,
     petType,
     tickModel,
@@ -68,6 +70,17 @@ export function PetFeeder({ pid, client: _client }: Props) {
   // packet arrives after the optimistic hunger bump.
   const intimacyRef = useRef<number | null>(null);
   intimacyRef.current = intimacy;
+  // Same trick for food count — the inventory-delta lands roughly
+  // alongside the hunger packet, but the debounce gives it time to
+  // settle so the toast reads the post-feed count.
+  const foodCountRef = useRef<number | null>(null);
+  foodCountRef.current = foodCount;
+  // Tracks whether the food count is currently in the "critically
+  // low" band (≤ LOW_FOOD_THRESHOLD). Fires the lowFood notification
+  // exactly once on the transition into that band; refilling above
+  // the threshold re-arms it. `null` foodCount counts as "not low" so
+  // we don't fire while waiting for the first inventory read.
+  const wasLowFoodRef = useRef<boolean>(false);
   const fedTimerRef = useRef<number | null>(null);
   const clearFedTimer = () => {
     if (fedTimerRef.current !== null) {
@@ -82,11 +95,14 @@ export function PetFeeder({ pid, client: _client }: Props) {
 
   // Reset the per-pet tracking refs on swap so the previous pet's
   // values don't bleed into the new pet's first observations.
+  // foodItemId is in the deps so the low-food latch re-arms when
+  // the food id binds mid-session via the learning path.
   useEffect(() => {
     prevStageRef.current = null;
     prevHungerRef.current = null;
+    wasLowFoodRef.current = false;
     clearFedTimer();
-  }, [petType]);
+  }, [petType, foodItemId]);
 
   // Re-render every second so the countdown stays accurate even when
   // no new packet has arrived.
@@ -205,6 +221,7 @@ export function PetFeeder({ pid, client: _client }: Props) {
       fedTimerRef.current = null;
       dispatchPetNotification("fed", config, {
         newIntimacy: intimacyRef.current ?? 0,
+        foodCount: foodCountRef.current,
       });
     }, FED_NOTIFICATION_DEBOUNCE_MS);
   }, [
@@ -214,6 +231,32 @@ export function PetFeeder({ pid, client: _client }: Props) {
     config.winEnabled,
     config.pushFed,
     config.winFed,
+  ]);
+
+  // Low-food detection: fires exactly once when foodCount crosses
+  // into the critical band. Refilling above the threshold re-arms it
+  // (the `wasLow && !isLow` branch). We don't fire on a `null` →
+  // number transition where the first read is already low — that'd
+  // spam the user every time the overlay (re)mounts on a session
+  // where they're already short on food. They probably already know.
+  useEffect(() => {
+    if (foodCount === null) return;
+    const isLow = foodCount <= LOW_FOOD_THRESHOLD;
+    const wasLow = wasLowFoodRef.current;
+    wasLowFoodRef.current = isLow;
+    if (isLow && !wasLow && foodItemId !== null) {
+      dispatchPetNotification("lowFood", config, {
+        foodCount,
+      });
+    }
+  }, [
+    foodCount,
+    foodItemId,
+    config.pushEnabled,
+    config.pushNtfyTopic,
+    config.winEnabled,
+    config.pushLowFood,
+    config.winLowFood,
   ]);
 
   if (hunger === null || stage === null) {
@@ -283,10 +326,18 @@ export function PetFeeder({ pid, client: _client }: Props) {
         </div>
       )}
 
-      {(config.showLevel || config.showIntimacy) && (
+      {(config.showFood || config.showIntimacy) && (
         <div className="pet-feeder__row pet-feeder__meta">
-          {config.showLevel && level !== null && (
-            <span className="pet-feeder__chip">Lv {level}</span>
+          {config.showFood && (
+            // Two "unknown" cases render as "—": the pet sprite isn't
+            // in pet_food_db.json (latamRO custom pet), or the backend
+            // hasn't observed a char-select dump for this PID yet. The
+            // chip stays visible so the user notices food info exists.
+            <span className="pet-feeder__chip">
+              Comida: {foodItemId === null || foodCount === null
+                ? "—"
+                : foodCount}
+            </span>
           )}
           {config.showIntimacy && intimacy !== null && (
             <span className="pet-feeder__chip">♥ {intimacy}</span>
@@ -297,17 +348,23 @@ export function PetFeeder({ pid, client: _client }: Props) {
   );
 }
 
-type FedContext = { newIntimacy: number };
+type NotifyContext = {
+  newIntimacy?: number;
+  /** Live food count for the "fed" and "lowFood" event bodies.
+   *  `null` (or omitted) when the count is unknown — the body
+   *  skips the food line in that case. */
+  foodCount?: number | null;
+};
 
 type EventDef = { push: NtfyMessage; win: { title: string; body: string } };
 
 /** Builds the per-event message payloads. Kept as a function (not a
- *  static map) so the "fed" body can interpolate the new intimacy
- *  and the delta. Same strings flow to both channels — the user
- *  doesn't need to know which one delivered the alert. */
+ *  static map) so the "fed" and "lowFood" bodies can interpolate
+ *  the live food count and intimacy. Same strings flow to both
+ *  channels — the user doesn't need to know which one delivered. */
 function buildEventMessages(
   event: PetNotificationEvent,
-  ctx?: FedContext,
+  ctx?: NotifyContext,
 ): EventDef {
   switch (event) {
     case "optimal":
@@ -338,7 +395,9 @@ function buildEventMessages(
       };
     case "fed": {
       const intimacy = ctx?.newIntimacy ?? 0;
-      const body = `Nova lealdade: ${intimacy}.`;
+      const foodLine =
+        ctx?.foodCount != null ? ` Comida restante: ${ctx.foodCount}.` : "";
+      const body = `Nova lealdade: ${intimacy}.${foodLine}`;
       return {
         push: {
           title: "Mascote alimentado",
@@ -349,13 +408,31 @@ function buildEventMessages(
         win: { title: "Mascote alimentado", body },
       };
     }
+    case "lowFood": {
+      // Defensive default — the dispatch site only fires with a real
+      // count, but a 0 fallback keeps the body grammatical if anyone
+      // wires it up without ctx later.
+      const count = ctx?.foodCount ?? 0;
+      const body = `Restam apenas ${count} ${
+        count === 1 ? "unidade" : "unidades"
+      } da comida do mascote. Reponha logo pra não interromper a alimentação.`;
+      return {
+        push: {
+          title: "Comida do mascote acabando!",
+          body,
+          priority: "high",
+          tags: ["warning"],
+        },
+        win: { title: "Comida do mascote acabando!", body },
+      };
+    }
   }
 }
 
 function dispatchPetNotification(
   event: PetNotificationEvent,
   config: PetFeederConfig,
-  ctx?: FedContext,
+  ctx?: NotifyContext,
 ): void {
   const def = PET_NOTIFICATION_EVENTS.find((e) => e.id === event);
   if (!def) return;
