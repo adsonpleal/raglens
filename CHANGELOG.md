@@ -7,6 +7,65 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-05-22
+
+### Adicionado
+
+- Addon **Informações de Mascote**: a linha que antes mostrava o nível
+  do mascote (informação inútil — o número não muda depois que o pet
+  para de evoluir) agora mostra **quantas unidades da comida do
+  mascote ativo você tem no inventário**. Atualiza ao vivo durante a
+  sessão: cada feed decrementa o contador, e o reabastecimento (compra
+  na NPC, drop de monstro etc.) reflete na próxima dump de inventário.
+  O chip aparece como `Comida: N`; quando o mascote ainda não foi
+  identificado (você não abriu o menu de informações do pet desde a
+  seleção de personagem) ou quando o servidor latamRO usa um sprite
+  customizado que não está na base do rathena, o chip mostra `Comida:
+  —` até a primeira alimentação ensinar a relação mascote → comida
+  (veja abaixo).
+
+- **Aprendizado automático de mascotes customizados do latamRO**:
+  a tabela de comidas embutida no Raglens é gerada a partir do
+  `pet_db.yml` oficial do rathena (105 mascotes vanilla), o que cobre
+  os mascotes clássicos como Poring, Lunatic e Drops mas perde os
+  sprites customizados que o latamRO adicionou (IDs na faixa
+  22000+). Pra esses casos, o decoder do `ZC_FEED_PET` (0x01a3 — o
+  pacote de confirmação que o servidor envia quando uma alimentação é
+  bem-sucedida, carregando o ID da comida consumida) aprende o par
+  (sprite do mascote → ID da comida) na primeira vez que você
+  alimenta o pet, persiste em `raglens.json` sob
+  `addon.pet-feeder.foods`, e usa esse mapeamento em todas as sessões
+  futuras. Resultado: o usuário alimenta uma vez manualmente e o chip
+  passa a funcionar pra sempre, sem precisar de atualização do
+  Raglens cada vez que o servidor adiciona um pet novo.
+
+- **Notificação "Pouca comida"**: novo evento da matriz de
+  notificações (push + Windows toast) que dispara uma vez quando o
+  contador de comida cai pra ≤ 10 unidades. O latch só rearma quando
+  o contador volta a subir acima do limiar (alimentado após
+  reabastecer), então o alerta não se repete a cada feed enquanto o
+  estoque já está baixo. O corpo da notificação "Mascote alimentado"
+  também passou a incluir a quantidade restante de comida — útil pra
+  saber se vale parar pra comprar mais antes de continuar farmando.
+
+### Corrigido
+
+- **Snapshot de inventário no select de personagem não estava sendo
+  commitado no latamRO**: o servidor envia o dump em uma sequência
+  `0x0B08 START / 0x0B09 NORMAL / 0x0B0A EQUIP / 0x0B0B END`, mas
+  como o EQUIP costuma ser grande o suficiente pra ultrapassar o
+  segmento TCP atual, o dispatcher do raglens dava BAIL e perdia o
+  resto do segmento — incluindo o END da bag principal. O único
+  `0x0B0B` que chegava ao decoder era do **carrinho** que vem em
+  seguida (`invType=1`), com bytes diferentes do que o código
+  esperava pra bag principal (`invType=0`), então o snapshot ficava
+  acumulado em buffer sem nunca comitar. Resultado prático: o chip
+  `Comida` mostraria `—` mesmo com itens no inventário e o mascote
+  identificado. Agora cada `0x0B09 NORMAL` commita direto no slot map
+  ao vivo e emite `packet:inventory-snapshot` por chunk; o frontend
+  faz um único refetch de `getFoodCount` 150ms depois do último emit
+  pra coalescer a rajada de packets que um dump multi-segmento gera.
+
 ## [0.2.0] - 2026-05-20
 
 ### Adicionado

@@ -13,7 +13,7 @@ modificado.
 
 ## ⬇ Download
 
-[**raglens-v0.2.0-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.2.0-setup.exe)
+[**raglens-v0.3.0-setup.exe**](https://github.com/adsonpleal/raglens/releases/latest/download/raglens-v0.3.0-setup.exe)
 — instalador único para Windows 10/11 (~1,3 MB). Já inclui o WinDivert
 embutido; basta executar e seguir o instalador. O Raglens é configurado
 para sempre rodar como Administrador (vai aparecer um UAC ao iniciar —
