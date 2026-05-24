@@ -4,6 +4,7 @@ version = "0.3.0"
 description = "WoW-addon-style overlay framework for Ragnarok Online"
 authors = ["adson"]
 edition = "2021"
+license = "MIT"
 
 [lib]
 name = "raglens_lib"

@@ -408,3 +408,7 @@ de som (`sounds.rs`), e o parser do nome do pet do `pet_state`.
 - Se nenhum decodificador estiver registrado, o opcode logger (se
   habilitado por env var) ainda grava a linha — é assim que opcodes
   novos são descobertos.
+
+## Licença
+
+MIT — veja [LICENSE](LICENSE).
