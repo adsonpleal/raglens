@@ -7,6 +7,33 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-09
+
+### Adicionado
+
+- **Seguir janela**: uma nova opção, disponível em todos os addons com
+  overlay e **ligada por padrão**, que ancora a posição de cada overlay
+  em relação à janela do cliente Ragnarok. Ao arrastar a janela do jogo
+  pela tela, os overlays acompanham o movimento mantendo o mesmo
+  deslocamento relativo — o layout que você montou não se desfaz quando
+  a janela muda de lugar. Um watcher em segundo plano
+  (`window_rect.rs`) acompanha o retângulo da janela do jogo em primeiro
+  plano e emite `game-window-rect-changed`; cada overlay visível se
+  translada pelo mesmo delta. A cadência de leitura é adaptativa: ~60 Hz
+  enquanto a janela está em movimento e cai para 100 ms depois de meio
+  segundo parada, então o custo em repouso é praticamente nulo.
+
+  A janela do jogo é identificada pelo foreground + título/classe
+  "Ragnarok", e **não** pelo PID, de propósito: a proteção de pacotes do
+  latamRO falsifica o `GetWindowThreadProcessId` da janela do jogo (ela
+  reporta PID 0) e o processo dono do socket de rede (Ragexe) não possui
+  janela nenhuma, então não existe vínculo confiável PID → janela. Cada
+  amostra é marcada pelo HWND (token), o que faz os overlays
+  re-referenciarem a base ao invés de pularem quando o foco alterna
+  entre clientes diferentes (multi-cliente: as duas janelas compartilham
+  o mesmo título). Overlays escondidos não se movem, então não derivam
+  seguindo a janela de outro cliente enquanto não estão à vista.
+
 ## [0.3.0] - 2026-05-22
 
 ### Adicionado
