@@ -12,11 +12,13 @@ mod packet;
 mod pet_state_store;
 mod process;
 mod sounds;
+mod window_rect;
 
 use capture::CaptureState;
 use connections::ConnectionsState;
 use foreground::ForegroundWatcherState;
 use interfaces::NetworkInterface;
+use window_rect::WindowRectWatcherState;
 use tauri::{AppHandle, Manager, State};
 
 #[tauri::command]
@@ -54,6 +56,7 @@ pub fn run() {
         .manage(CaptureState::default())
         .manage(ConnectionsState::default())
         .manage(ForegroundWatcherState::default())
+        .manage(WindowRectWatcherState::default())
         .manage(pet_state_store::PetStateStore::default())
         .manage(inventory_store::InventoryStore::default())
         .manage(disconnect::RecentRestarts::default())
@@ -64,6 +67,10 @@ pub fn run() {
             // process; per-PID overlays subscribe to those for show/hide.
             let watcher = app.state::<ForegroundWatcherState>();
             watcher.start(app.handle().clone());
+            // Track the selected client's window rect so overlays with
+            // "lock to game window" enabled can follow it as it moves.
+            let rect_watcher = app.state::<WindowRectWatcherState>();
+            rect_watcher.start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -108,6 +115,7 @@ pub fn run() {
                 let capture_state = app_handle.state::<capture::CaptureState>();
                 capture::shutdown_capture(capture_state.inner());
                 app_handle.state::<ForegroundWatcherState>().stop();
+                app_handle.state::<WindowRectWatcherState>().stop();
             }
             _ => {}
         });

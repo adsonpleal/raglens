@@ -7,9 +7,11 @@ type Props = {
   enabled: boolean;
   locked: boolean;
   alwaysVisible: boolean;
+  lockToGame: boolean;
   onToggle: () => void;
   onLockToggle: (value: boolean) => void;
   onAlwaysVisibleToggle: (value: boolean) => void;
+  onLockToGameToggle: (value: boolean) => void;
   onConfigure: () => void;
   onInfo: () => void;
 };
@@ -19,9 +21,11 @@ export function AddonRow({
   enabled,
   locked,
   alwaysVisible,
+  lockToGame,
   onToggle,
   onLockToggle,
   onAlwaysVisibleToggle,
+  onLockToGameToggle,
   onConfigure,
   onInfo,
 }: Props) {
@@ -61,6 +65,14 @@ export function AddonRow({
                     onChange={(e) => onLockToggle(e.target.checked)}
                   />
                   <span>{t.addons.locked}</span>
+                </label>
+                <label className="addon-check">
+                  <input
+                    type="checkbox"
+                    checked={lockToGame}
+                    onChange={(e) => onLockToGameToggle(e.target.checked)}
+                  />
+                  <span>{t.addons.lockToGame}</span>
                 </label>
               </>
             )}

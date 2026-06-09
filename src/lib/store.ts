@@ -81,6 +81,25 @@ export async function setOverlayUserHidden(
   await store.save();
 }
 
+/** Whether this addon's overlay(s) follow the selected client's game
+ *  window as it moves. Defaults to `true` — anchoring is the expected
+ *  behavior, and existing users get it without flipping a toggle. */
+export async function getOverlayLockToGameWindow(
+  addonId: string,
+): Promise<boolean> {
+  return (
+    (await store.get<boolean>(`overlay.${addonId}.lockToGameWindow`)) ?? true
+  );
+}
+
+export async function setOverlayLockToGameWindow(
+  addonId: string,
+  value: boolean,
+): Promise<void> {
+  await store.set(`overlay.${addonId}.lockToGameWindow`, value);
+  await store.save();
+}
+
 export async function getOverlayAppearance(
   addonId: string,
 ): Promise<OverlayAppearance> {

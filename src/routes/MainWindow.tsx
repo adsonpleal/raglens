@@ -32,10 +32,12 @@ export function MainWindow() {
     enabled,
     locked,
     alwaysVisible,
+    lockToGame,
     shortcuts,
     toggle,
     setOneLocked,
     setOneAlwaysVisible,
+    setOneLockToGame,
     setOneShortcut,
     lockAll,
     unlockAll,
@@ -144,9 +146,11 @@ export function MainWindow() {
                 enabled={enabled.has(a.id)}
                 locked={locked.get(a.id) ?? false}
                 alwaysVisible={alwaysVisible.get(a.id) ?? false}
+                lockToGame={lockToGame.get(a.id) ?? true}
                 onToggle={() => toggle(a)}
                 onLockToggle={(v) => setOneLocked(a.id, v)}
                 onAlwaysVisibleToggle={(v) => setOneAlwaysVisible(a.id, v)}
+                onLockToGameToggle={(v) => setOneLockToGame(a.id, v)}
                 onConfigure={() => setSettingsAddonId(a.id)}
                 onInfo={() => setInfoAddonId(a.id)}
               />

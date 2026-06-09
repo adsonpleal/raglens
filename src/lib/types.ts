@@ -41,6 +41,20 @@ export type ForegroundChanged = {
   pid: number | null;
 };
 
+/** Screen rectangle (physical pixels) of the foreground Ragnarok game
+ *  window, emitted by the Rust window-rect watcher whenever it moves or
+ *  resizes. Overlays with "lock to game window" enabled translate
+ *  themselves by the delta so they follow the game window. `token` is
+ *  the window's HWND — consumers re-baseline (no jump) when it changes,
+ *  e.g. when focus moves to another client's window. */
+export type GameWindowRect = {
+  token: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type SelectedClient = {
   pid: number | null;
 };

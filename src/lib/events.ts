@@ -9,6 +9,7 @@ import type {
   ExpGain,
   ExpTotalUpdate,
   ForegroundChanged,
+  GameWindowRect,
   InventoryDelta,
   InventorySnapshot,
   PetFedRequest,
@@ -52,6 +53,14 @@ export function onForegroundChanged(
   return listen<ForegroundChanged>("foreground-changed", (e) => handler(e.payload));
 }
 
+export function onGameWindowRect(
+  handler: (event: GameWindowRect) => void,
+): Promise<UnlistenFn> {
+  return listen<GameWindowRect>("game-window-rect-changed", (e) =>
+    handler(e.payload),
+  );
+}
+
 export function onSelectedClientChanged(
   handler: (event: SelectedClient) => void,
 ): Promise<UnlistenFn> {
@@ -72,6 +81,9 @@ export type OverlayConfigChanged = {
    *  (e.g. last-teleport disables drag and absorbs background clicks
    *  while locked so the toolbar buttons stay alive). */
   locked?: boolean;
+  /** New "lock to game window" state. Overlays read this to start or
+   *  stop following the selected client's window as it moves. */
+  lock_to_game?: boolean;
   /** Set true when the addon-specific config (the modal-driven blob
    *  at `addon.<id>.config`) changed. Overlays re-read the config
    *  via `getAddonConfig` rather than receiving it in the payload —

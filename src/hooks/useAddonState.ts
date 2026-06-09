@@ -16,9 +16,11 @@ import {
   getEnabledAddons,
   getOverlayAlwaysVisible,
   getOverlayLocked,
+  getOverlayLockToGameWindow,
   getOverlayShortcut,
   setEnabledAddons,
   setOverlayAlwaysVisible,
+  setOverlayLockToGameWindow,
   setOverlayShortcut,
 } from "../lib/store";
 
@@ -28,6 +30,7 @@ export function useAddonState() {
   const [alwaysVisible, setAlwaysVisible] = useState<Map<string, boolean>>(
     new Map(),
   );
+  const [lockToGame, setLockToGame] = useState<Map<string, boolean>>(new Map());
   const [shortcuts, setShortcuts] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -39,10 +42,12 @@ export function useAddonState() {
 
       const l = new Map<string, boolean>();
       const v = new Map<string, boolean>();
+      const g = new Map<string, boolean>();
       const s = new Map<string, string>();
       for (const id of valid) {
         l.set(id, await getOverlayLocked(id));
         v.set(id, await getOverlayAlwaysVisible(id));
+        g.set(id, await getOverlayLockToGameWindow(id));
         const sc =
           (await getOverlayShortcut(id)) ?? getAddon(id)?.defaultShortcut;
         if (sc) s.set(id, sc);
@@ -52,6 +57,7 @@ export function useAddonState() {
       setEnabled(new Set(valid));
       setLocked(l);
       setAlwaysVisible(v);
+      setLockToGame(g);
       setShortcuts(s);
     })();
     return () => {
@@ -101,10 +107,12 @@ export function useAddonState() {
           const next = new Set(enabled);
           next.add(id);
           await persistEnabled(next);
-          const [storeLocked, storeAlways] = await Promise.all([
-            getOverlayLocked(id),
-            getOverlayAlwaysVisible(id),
-          ]);
+          const [storeLocked, storeAlways, storeLockToGame] =
+            await Promise.all([
+              getOverlayLocked(id),
+              getOverlayAlwaysVisible(id),
+              getOverlayLockToGameWindow(id),
+            ]);
           setLocked((m) => {
             const nm = new Map(m);
             nm.set(id, storeLocked);
@@ -113,6 +121,11 @@ export function useAddonState() {
           setAlwaysVisible((m) => {
             const nm = new Map(m);
             nm.set(id, storeAlways);
+            return nm;
+          });
+          setLockToGame((m) => {
+            const nm = new Map(m);
+            nm.set(id, storeLockToGame);
             return nm;
           });
           await refreshShortcutFor(id);
@@ -148,6 +161,16 @@ export function useAddonState() {
     },
     [],
   );
+
+  const setOneLockToGame = useCallback(async (id: string, value: boolean) => {
+    await setOverlayLockToGameWindow(id, value);
+    setLockToGame((m) => {
+      const nm = new Map(m);
+      nm.set(id, value);
+      return nm;
+    });
+    await emitOverlayConfigChanged({ addon_id: id, lock_to_game: value });
+  }, []);
 
   const setOneShortcut = useCallback(
     async (id: string, shortcut: string | null) => {
@@ -191,10 +214,12 @@ export function useAddonState() {
     enabled,
     locked,
     alwaysVisible,
+    lockToGame,
     shortcuts,
     toggle,
     setOneLocked,
     setOneAlwaysVisible,
+    setOneLockToGame,
     setOneShortcut,
     lockAll,
     unlockAll,

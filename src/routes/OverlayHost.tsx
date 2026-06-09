@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { LogicalSize } from "@tauri-apps/api/dpi";
+import { LogicalSize, PhysicalPosition } from "@tauri-apps/api/dpi";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import type { UnlistenFn } from "@tauri-apps/api/event";
 import { LastTeleportControls } from "../addons/last-teleport/LastTeleportControls";
@@ -13,16 +13,18 @@ import { useSelectedPid } from "../hooks/useSelectedPid";
 import {
   onClientUpdated,
   onForegroundChanged,
+  onGameWindowRect,
   onOverlayConfigChanged,
 } from "../lib/events";
 import { getForegroundPid, listClients, raglensPid } from "../lib/invoke";
 import {
   getOverlayAlwaysVisible,
+  getOverlayLockToGameWindow,
   getOverlayUserHidden,
 } from "../lib/store";
 import type { OverlayView } from "../lib/store";
 import { appearanceCssVars } from "../lib/appearance";
-import type { ClientInfo } from "../lib/types";
+import type { ClientInfo, GameWindowRect } from "../lib/types";
 import "../styles/overlay.css";
 
 type Props = {
@@ -58,6 +60,7 @@ export function OverlayHost({ addonId, view = "primary" }: Props) {
   const [client, setClient] = useState<ClientInfo | null>(null);
   const [alwaysVisible, setAlwaysVisible] = useState(false);
   const [userHidden, setUserHidden] = useState(false);
+  const [lockToGame, setLockToGame] = useState(false);
   const appearance = useOverlayAppearance(addonId);
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -78,11 +81,13 @@ export function OverlayHost({ addonId, view = "primary" }: Props) {
     Promise.all([
       getOverlayAlwaysVisible(addonId),
       getOverlayUserHidden(addonId),
+      getOverlayLockToGameWindow(addonId),
     ])
-      .then(([av, uh]) => {
+      .then(([av, uh, ltg]) => {
         if (cancelled) return;
         setAlwaysVisible(av);
         setUserHidden(uh);
+        setLockToGame(ltg);
       })
       .catch((e) => console.warn(`[overlay] hydrate config(${addonId}) failed:`, e));
 
@@ -93,6 +98,9 @@ export function OverlayHost({ addonId, view = "primary" }: Props) {
       }
       if (typeof evt.user_hidden === "boolean") {
         setUserHidden(evt.user_hidden);
+      }
+      if (typeof evt.lock_to_game === "boolean") {
+        setLockToGame(evt.lock_to_game);
       }
     }).then((u) => {
       if (cancelled) u();
@@ -278,6 +286,52 @@ export function OverlayHost({ addonId, view = "primary" }: Props) {
       if (unlisten) unlisten();
     };
   }, [selectedPid, alwaysVisible, userHidden]);
+
+  // Follow the foreground game window while "lock to game window" is
+  // enabled. Each event carries that window's current screen rect
+  // (physical px); we translate this overlay by the same delta the game
+  // window moved, preserving the relative layout. The first event after
+  // a window-identity (token) change only sets the baseline, so
+  // enabling mid-session — or focus moving between two clients — never
+  // makes the overlay jump. We only reposition while the overlay is
+  // actually visible, so a hidden overlay never drifts off following a
+  // different client's window.
+  useEffect(() => {
+    if (!lockToGame || selectedPid === null) return;
+    let cancelled = false;
+    let unlisten: UnlistenFn | null = null;
+    let last: GameWindowRect | null = null;
+    const w = getCurrentWebviewWindow();
+
+    onGameWindowRect((rect) => {
+      if (cancelled) return;
+      const prev = last;
+      last = rect;
+      // Baseline on the first event or whenever the focused window
+      // changes — don't apply a delta computed against another window.
+      if (!prev || prev.token !== rect.token) return;
+      const dx = rect.x - prev.x;
+      const dy = rect.y - prev.y;
+      if (dx === 0 && dy === 0) return;
+      void (async () => {
+        try {
+          if (!(await w.isVisible())) return;
+          const pos = await w.outerPosition();
+          await w.setPosition(new PhysicalPosition(pos.x + dx, pos.y + dy));
+        } catch (e) {
+          console.warn("[overlay] follow game window failed:", e);
+        }
+      })();
+    }).then((u) => {
+      if (cancelled) u();
+      else unlisten = u;
+    });
+
+    return () => {
+      cancelled = true;
+      if (unlisten) unlisten();
+    };
+  }, [lockToGame, selectedPid]);
 
   const bodyStyle = appearanceCssVars(appearance) as React.CSSProperties;
 
