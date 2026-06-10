@@ -7,6 +7,29 @@ e o versionamento segue o [Versionamento Semântico](https://semver.org/lang/pt-
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-09
+
+### Adicionado
+
+- **Minimizar para a bandeja**: a janela principal agora pode ser
+  recolhida para a bandeja do sistema (system tray) sem encerrar o app,
+  então os overlays dos addons continuam funcionando sobre o jogo
+  enquanto o Raglens fica fora do caminho. Tanto o botão de minimizar
+  quanto o de fechar (X) escondem a janela na bandeja em vez de sair; um
+  ícone na bandeja oferece o menu **"Mostrar Raglens"** para restaurar
+  (clicar no ícone com o botão esquerdo também restaura) e **"Sair"**
+  para realmente encerrar o app.
+
+  A janela é escondida, e não fechada, de propósito: o webview da janela
+  principal continua vivo, então o watcher de foreground e a lógica de
+  visibilidade do `OverlayHost` seguem controlando os overlays sobre o
+  jogo normalmente. Como o Tauri não tem um evento de minimizar próprio,
+  o caminho de minimizar reage ao `Resized` e verifica `is_minimized()`;
+  ao restaurar, a sequência é `unminimize` → `show` → `set_focus`, o que
+  cobre tanto a janela fechada quanto a minimizada. O encerramento ainda
+  passa por `app.exit(0)`, preservando a limpeza existente em
+  `RunEvent::Exit` (parada da captura e dos watchers).
+
 ## [0.4.0] - 2026-06-09
 
 ### Adicionado
