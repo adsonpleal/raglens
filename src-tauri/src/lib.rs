@@ -19,7 +19,22 @@ use connections::ConnectionsState;
 use foreground::ForegroundWatcherState;
 use interfaces::NetworkInterface;
 use window_rect::WindowRectWatcherState;
-use tauri::{AppHandle, Manager, State};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    AppHandle, Manager, State,
+};
+
+/// Bring the main window back from the tray: undo any minimized state,
+/// show it (it's hidden, not just minimized, while in the tray), and
+/// pull it to the foreground.
+fn show_main_window(app: &AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.unminimize();
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+}
 
 #[tauri::command]
 fn list_interfaces() -> Result<Vec<NetworkInterface>, String> {
@@ -71,6 +86,41 @@ pub fn run() {
             // "lock to game window" enabled can follow it as it moves.
             let rect_watcher = app.state::<WindowRectWatcherState>();
             rect_watcher.start(app.handle().clone());
+
+            // System tray. Minimizing or closing the main window hides
+            // it here (see the RunEvent handlers below) rather than
+            // quitting — the addon overlays keep running over the game.
+            // The tray is the only affordance to restore the window or
+            // actually quit ("Sair").
+            let show_item =
+                MenuItem::with_id(app, "show", "Mostrar Raglens", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+            let mut tray = TrayIconBuilder::with_id("main-tray")
+                .tooltip("Raglens")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "show" => show_main_window(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    // Left-click the tray icon to bring the window back.
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
+                });
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            tray.build(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -93,17 +143,34 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| match event {
-            // Closing the main window exits the app entirely. Without
-            // this, overlay windows would keep the process alive
-            // (some are hidden by the foreground watcher so the user
-            // sees nothing while the app silently runs in the
-            // background).
+            // Closing the main window hides it to the system tray
+            // instead of quitting, so the addon overlays keep running
+            // over the game. Quitting is done via the tray menu's
+            // "Sair", which calls app.exit(0) directly.
             tauri::RunEvent::WindowEvent {
                 label,
-                event: tauri::WindowEvent::CloseRequested { .. },
+                event: tauri::WindowEvent::CloseRequested { api, .. },
                 ..
             } if label == "main" => {
-                app_handle.exit(0);
+                api.prevent_close();
+                if let Some(win) = app_handle.get_webview_window("main") {
+                    let _ = win.hide();
+                }
+            }
+            // Minimizing also tucks the window into the tray (hiding it
+            // drops it from the taskbar). Tauri has no dedicated
+            // minimize event, so we react to Resized and gate on the
+            // minimized state.
+            tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::Resized(_),
+                ..
+            } if label == "main" => {
+                if let Some(win) = app_handle.get_webview_window("main") {
+                    if win.is_minimized().unwrap_or(false) {
+                        let _ = win.hide();
+                    }
+                }
             }
             // Tear down the background threads on app exit. Without
             // this, the capture thread sits blocked in WinDivertRecv
